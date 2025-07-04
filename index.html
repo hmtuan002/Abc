@@ -422,6 +422,14 @@
             color: #3a7bd5;
         }
 
+        .formula {
+            background-color: #f5f5f5;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            margin: 5px 0;
+        }
+
         @media (max-width: 768px) {
             .main-container {
                 margin: 0;
@@ -586,6 +594,7 @@
         let currentSubject = '';
         let chatHistory = [];
         let uploadedFile = null;
+        let currentProblem = null;
 
         // General exclude keywords for high school level
         const generalExcludeKeywords = [
@@ -774,7 +783,7 @@
 1. Chủ đề: (Chỉ ghi tên chủ đề chính)
 2. Kiến thức liên quan:
 - Khái niệm: (Dùng từ ngữ đơn giản, dễ hiểu)
-- Công thức: (Viết đơn giản, ví dụ: "vận tốc = quãng đường / thời gian")
+- Công thức: (Viết đơn giản bằng chữ, ví dụ: "vận tốc = quãng đường / thời gian")
 3. Câu hỏi định hướng: (3-5 câu hỏi giúp học sinh tự nghĩ)
 4. Bài tập tương tự: (2 bài, chỉ đề bài)
 
@@ -782,7 +791,7 @@ Yêu cầu:
 - Không giải bài
 - Không đưa đáp án
 - Dùng từ ngữ đơn giản, gần gũi với học sinh
-- Công thức viết dạng dễ hiểu nhất
+- Công thức viết bằng chữ, không dùng ký hiệu toán học
 
 Lịch sử chat:
 ${context}
@@ -801,6 +810,37 @@ Phân tích:
 4. Bài tập tương tự:
 - 
 - `;
+        }
+
+        // Generate AI prompt for solution
+        function generateSolutionPrompt(question, subject, history, analysis) {
+            const subjectName = subject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học';
+            
+            // Create context from chat history
+            let context = "Lịch sử trò chuyện gần đây:\n";
+            if (history && history.length > 0) {
+                context += history.slice(-3).map(msg => 
+                    `${msg.sender === 'nguoi-dung' ? 'Học sinh' : 'Bot'}: ${msg.message}`
+                ).join('\n');
+            } else {
+                context += "Chưa có lịch sử trò chuyện";
+            }
+            
+            return `Bạn là giáo viên ${subjectName} THPT. Hãy giải bài tập sau theo yêu cầu:
+
+Yêu cầu:
+1. Giải chi tiết từng bước
+2. Giải thích rõ ràng từng bước
+3. Công thức viết bằng chữ, không dùng ký hiệu toán học
+4. Cuối cùng đưa ra 2 bài tập tương tự (chỉ đề bài)
+
+Phân tích trước đó:
+${analysis}
+
+Câu hỏi hiện tại: ${question}
+
+Giải bài:
+1. `;
         }
 
         // Generate AI prompt for general response
@@ -841,6 +881,60 @@ Trả lời:`;
             
             // Load chat history for this subject
             loadSubjectChatHistory(subject);
+        }
+
+        // Process AI response for analysis
+        function processAnalysisResponse(response) {
+            // Store the current problem analysis
+            currentProblem = {
+                analysis: response,
+                solved: false
+            };
+            
+            // Format the response for display
+            let formattedResponse = `<div class="knowledge-box">
+                <div class="knowledge-box-title"><i class="fas fa-lightbulb"></i> Phân tích bài toán</div>
+                ${response.replace(/\n/g, '<br>')}
+            </div>`;
+            
+            // Replace formulas with clear text
+            formattedResponse = formattedResponse.replace(/\$\sqrt\{2h\/10\}\$/g, 
+                '<div class="formula">căn bậc hai của (2 nhân độ cao h chia cho 10)</div>');
+            formattedResponse = formattedResponse.replace(/\$v = \sqrt\{2gh\}\$/g, 
+                '<div class="formula">vận tốc v = căn bậc hai của (2 nhân gia tốc trọng trường g nhân độ cao h)</div>');
+            formattedResponse = formattedResponse.replace(/\$F = m \cdot a\$/g, 
+                '<div class="formula">Lực F = khối lượng m nhân gia tốc a</div>');
+            
+            return formattedResponse;
+        }
+
+        // Process AI response for solution
+        function processSolutionResponse(response) {
+            // Mark problem as solved
+            currentProblem.solved = true;
+            
+            // Format the response for display
+            let formattedResponse = response;
+            
+            // Replace formulas with clear text
+            formattedResponse = formattedResponse.replace(/\$\sqrt\{2h\/10\}\$/g, 
+                '<div class="formula">căn bậc hai của (2 nhân độ cao h chia cho 10)</div>');
+            formattedResponse = formattedResponse.replace(/\$v = \sqrt\{2gh\}\$/g, 
+                '<div class="formula">vận tốc v = căn bậc hai của (2 nhân gia tốc trọng trường g nhân độ cao h)</div>');
+            formattedResponse = formattedResponse.replace(/\$F = m \cdot a\$/g, 
+                '<div class="formula">Lực F = khối lượng m nhân gia tốc a</div>');
+            
+            // Add exercise suggestions
+            const exerciseMatch = response.match(/Bài tập tương tự:([\s\S]*)/);
+            if (exerciseMatch) {
+                formattedResponse = formattedResponse.replace(exerciseMatch[0], '');
+                formattedResponse += `<div class="exercise-suggestion">
+                    <div class="exercise-suggestion-title"><i class="fas fa-tasks"></i> Bài tập tương tự</div>
+                    ${exerciseMatch[1].trim().replace(/\n/g, '<br>')}
+                </div>`;
+            }
+            
+            return formattedResponse;
         }
 
         // Send message
@@ -906,17 +1000,40 @@ Trả lời:`;
                 // Check if user is asking for a solution
                 const isAskingForSolution = solutionRequestPhrases.test(tinNhanNguoiDung.toLowerCase());
                 
+                // Check if we have a current problem that hasn't been solved yet
+                if (currentProblem && !currentProblem.solved && isAskingForSolution) {
+                    // Generate solution for the current problem
+                    const prompt = generateSolutionPrompt(tinNhanNguoiDung, currentSubject, recentHistory, currentProblem.analysis);
+                    
+                    // Get AI response
+                    const ketQua = await moHinh.generateContent(prompt);
+                    const phanHoi = await ketQua.response;
+                    let traLoiBot = phanHoi.text();
+                    
+                    // Process the solution response
+                    traLoiBot = processSolutionResponse(traLoiBot);
+                    
+                    // Display response
+                    loadingIndicator.style.display = 'none';
+                    themTinNhanVaoGiaoDien("bot", traLoiBot);
+                    addToChatHistory("bot", traLoiBot, currentSubject);
+                    
+                    // Clear uploaded file
+                    uploadedFile = null;
+                    return;
+                }
+                
+                // Check if the message looks like a homework problem
+                const isHomeworkProblem = tinNhanNguoiDung.includes("tính") || 
+                                        tinNhanNguoiDung.includes("xác định") || 
+                                        tinNhanNguoiDung.includes("cho biết") || 
+                                        tinNhanNguoiDung.includes("bài toán");
+                
                 // Generate appropriate prompt
                 let prompt;
                 if (isAskingForSolution) {
                     prompt = generateGeneralPrompt(tinNhanNguoiDung, currentSubject, recentHistory);
                 } else {
-                    // Check if the message looks like a homework problem
-                    const isHomeworkProblem = tinNhanNguoiDung.includes("tính") || 
-                                            tinNhanNguoiDung.includes("xác định") || 
-                                            tinNhanNguoiDung.includes("cho biết") || 
-                                            tinNhanNguoiDung.includes("bài toán");
-                    
                     prompt = isHomeworkProblem ? 
                         generateAnalysisPrompt(tinNhanNguoiDung, currentSubject, recentHistory) : 
                         generateGeneralPrompt(tinNhanNguoiDung, currentSubject, recentHistory);
@@ -927,22 +1044,19 @@ Trả lời:`;
                 const phanHoi = await ketQua.response;
                 let traLoiBot = phanHoi.text();
                 
-                // Only process the template if it's an analysis response
-                if (!isAskingForSolution && prompt.includes("1. Chủ đề:")) {
-                    traLoiBot = traLoiBot.replace(/Phân tích:\s*1\. Chủ đề:\s*/g, '');
-                    traLoiBot = traLoiBot.replace(/2\. Kiến thức liên quan:\s*- Khái niệm:\s*/g, '\nKiến thức liên quan:\n- Khái niệm: ');
-                    traLoiBot = traLoiBot.replace(/- Công thức:\s*/g, '- Công thức: ');
-                    traLoiBot = traLoiBot.replace(/3\. Câu hỏi định hướng:\s*-\s*/g, '\nGợi ý cách giải:\n• ');
-                    traLoiBot = traLoiBot.replace(/-\s*/g, '• ');
-                    traLoiBot = traLoiBot.replace(/4\. Bài tập tương tự:\s*-\s*/g, '\nBài tập tương tự:\n• ');
-                    
-                    // Simplify formulas
-                    traLoiBot = traLoiBot.replace(/\$\vec{v}_{tuyệt đối} = \vec{v}_{tương đối} \+ \vec{v}_{kéo theo}\$/g, 'vận tốc tuyệt đối = vận tốc tương đối + vận tốc kéo theo');
-                    traLoiBot = traLoiBot.replace(/\$F = m \cdot a\$/g, 'Lực = khối lượng x gia tốc');
-                    traLoiBot = traLoiBot.replace(/\$E = m \cdot c^2\$/g, 'Năng lượng = khối lượng x (tốc độ ánh sáng)²');
-                    
-                    // Add introduction
-                    traLoiBot = `Để giải quyết câu hỏi này, em cần:\n${traLoiBot}`;
+                // Process the response based on prompt type
+                if (prompt.includes("1. Chủ đề:")) {
+                    // This is an analysis response
+                    traLoiBot = processAnalysisResponse(traLoiBot);
+                } else {
+                    // This is a general or solution response
+                    // Replace formulas with clear text
+                    traLoiBot = traLoiBot.replace(/\$\sqrt\{2h\/10\}\$/g, 
+                        '<div class="formula">căn bậc hai của (2 nhân độ cao h chia cho 10)</div>');
+                    traLoiBot = traLoiBot.replace(/\$v = \sqrt\{2gh\}\$/g, 
+                        '<div class="formula">vận tốc v = căn bậc hai của (2 nhân gia tốc trọng trường g nhân độ cao h)</div>');
+                    traLoiBot = traLoiBot.replace(/\$F = m \cdot a\$/g, 
+                        '<div class="formula">Lực F = khối lượng m nhân gia tốc a</div>');
                 }
                 
                 // Display response
