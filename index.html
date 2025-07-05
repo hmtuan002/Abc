@@ -195,7 +195,7 @@
         #o-nhap-tin-nhan {
             width: 100%;
             background: #f5f7fa;
-            color: transparent;
+            color: #333;
             caret-color: #333;
             padding: 12px 50px 12px 20px;
             border: 1px solid #e0e0e0;
@@ -211,53 +211,6 @@
         #o-nhap-tin-nhan:focus {
             border-color: #3a7bd5;
             box-shadow: 0 0 0 3px rgba(58, 123, 213, 0.2);
-        }
-
-        #o-nhap-tin-nhan-preview {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            min-height: 50px;
-            padding: 12px 50px 12px 20px;
-            pointer-events: none;
-            z-index: 1;
-            white-space: pre-wrap;
-            overflow: hidden;
-            color: #333;
-            border: 1px solid transparent;
-            border-radius: 25px;
-            font-size: 1rem;
-            line-height: 1.5;
-        }
-
-        #nut-gui {
-            background-color: #3a7bd5;
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            margin-left: 10px;
-            cursor: pointer;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 18px;
-            transition: all 0.3s ease;
-            position: absolute;
-            right: 15px;
-            top: 50%;
-            transform: translateY(-50%);
-            z-index: 2;
-        }
-
-        #nut-gui:hover {
-            background-color: #2c65c4;
-        }
-
-        #nut-gui:active {
-            transform: translateY(-50%) scale(0.95);
         }
 
         .back-button {
@@ -430,6 +383,20 @@
             margin: 5px 0;
         }
 
+        .similar-exercise {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #6c757d;
+        }
+
+        .similar-exercise-title {
+            font-weight: bold;
+            color: #6c757d;
+            margin-bottom: 5px;
+        }
+
         @media (max-width: 768px) {
             .main-container {
                 margin: 0;
@@ -469,7 +436,7 @@
                 padding: 10px;
             }
 
-            #o-nhap-tin-nhan, #o-nhap-tin-nhan-preview {
+            #o-nhap-tin-nhan {
                 padding: 10px 45px 10px 15px;
                 min-height: 45px;
                 font-size: 0.95rem;
@@ -535,7 +502,6 @@
                     <input type="file" id="file-upload" accept="image/*,.pdf,.doc,.docx,.txt">
                     <div id="o-nhap-tin-nhan-container">
                         <textarea id="o-nhap-tin-nhan" placeholder="Nhập câu hỏi của bạn hoặc tải lên file đề bài..." rows="1"></textarea>
-                        <div id="o-nhap-tin-nhan-preview"></div>
                         <button id="nut-gui">
                             <i class="fas fa-paper-plane"></i>
                         </button>
@@ -583,7 +549,6 @@
         const chatbotContainer = document.getElementById('chatbot-container');
         const khungTroChuyen = document.getElementById('khung-tro-chuyen');
         const oNhapTinNhan = document.getElementById('o-nhap-tin-nhan');
-        const oNhapTinNhanPreview = document.getElementById('o-nhap-tin-nhan-preview');
         const nutGui = document.getElementById('nut-gui');
         const loadingIndicator = document.getElementById('loadingIndicator');
         const subjectButtons = document.querySelectorAll('.subject-button');
@@ -595,6 +560,7 @@
         let chatHistory = [];
         let uploadedFile = null;
         let currentProblem = null;
+        let userRole = 'học sinh'; // Mặc định là học sinh
 
         // General exclude keywords for high school level
         const generalExcludeKeywords = [
@@ -636,11 +602,8 @@
                 }
             });
 
-            // Update input preview when typing
-            oNhapTinNhan.addEventListener('input', function() {
-                updateInputPreview();
-                adjustTextareaHeight();
-            });
+            // Adjust textarea height when typing
+            oNhapTinNhan.addEventListener('input', adjustTextareaHeight);
 
             // File upload handler
             fileUpload.addEventListener('change', handleFileUpload);
@@ -698,13 +661,6 @@
         function adjustTextareaHeight() {
             oNhapTinNhan.style.height = 'auto';
             oNhapTinNhan.style.height = (oNhapTinNhan.scrollHeight) + 'px';
-            oNhapTinNhanPreview.style.height = oNhapTinNhan.style.height;
-        }
-
-        // Update input preview
-        function updateInputPreview() {
-            const text = oNhapTinNhan.value;
-            oNhapTinNhanPreview.textContent = text;
         }
 
         // Add message to chat interface
@@ -759,20 +715,25 @@
             
             // If no messages, show welcome
             if (subjectMessages.length === 0) {
-                themTinNhanVaoGiaoDien("bot", `Chào bạn! Tôi là trợ lý học tập môn ${subject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học'}. Tôi có thể giúp bạn học tập bằng cách phân tích câu hỏi và gợi ý hướng giải quyết. Bạn có câu hỏi gì về môn học này không?`);
-                addToChatHistory("bot", `Chào bạn! Tôi là trợ lý học tập môn ${subject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học'}. Tôi có thể giúp bạn học tập bằng cách phân tích câu hỏi và gợi ý hướng giải quyết. Bạn có câu hỏi gì về môn học này không?`, subject);
+                const welcomeMessage = userRole === 'giáo viên' ? 
+                    `Kính chào thầy/cô! Thầy là trợ lý học tập môn ${subject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học'}. Thầy có thể hỗ trợ thầy/cô trong việc giảng dạy.` :
+                    `Chào em! Thầy là trợ lý học tập môn ${subject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học'}. Thầy có thể giúp em học tập bằng cách gợi mở tư duy. Em có câu hỏi gì về môn học này không?`;
+                
+                themTinNhanVaoGiaoDien("bot", welcomeMessage);
+                addToChatHistory("bot", welcomeMessage, subject);
             }
         }
 
         // Generate AI prompt for analysis
         function generateAnalysisPrompt(question, subject, history) {
             const subjectName = subject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học';
+            const userTitle = userRole === 'giáo viên' ? 'thầy/cô' : 'em';
             
             // Create context from chat history
             let context = "Lịch sử trò chuyện gần đây:\n";
             if (history && history.length > 0) {
                 context += history.slice(-3).map(msg => 
-                    `${msg.sender === 'nguoi-dung' ? 'Học sinh' : 'Bot'}: ${msg.message}`
+                    `${msg.sender === 'nguoi-dung' ? 'Người dùng' : 'Bot'}: ${msg.message}`
                 ).join('\n');
             } else {
                 context += "Chưa có lịch sử trò chuyện";
@@ -780,18 +741,27 @@
             
             return `Bạn là giáo viên ${subjectName} THPT. Hãy phân tích câu hỏi sau theo yêu cầu:
 
+QUY TẮC BẮT BUỘC:
+1. KHÔNG sử dụng ký tự * trong bất kỳ trường hợp nào
+2. KHÔNG được đưa ra đáp án cuối cùng
+3. KHÔNG tự động giải bài hoàn chỉnh
+4. Chỉ ở vai trò gợi mở tư duy học sinh
+5. Xưng hô: Thầy (cho bot) và em (cho học sinh) hoặc thầy/cô (cho giáo viên)
+
 1. Chủ đề: (Chỉ ghi tên chủ đề chính)
 2. Kiến thức liên quan:
 - Khái niệm: (Dùng từ ngữ đơn giản, dễ hiểu)
-- Công thức: (Viết đơn giản bằng chữ, ví dụ: "vận tốc = quãng đường / thời gian")
-3. Câu hỏi định hướng: (3-5 câu hỏi giúp học sinh tự nghĩ)
+- Công thức: (Viết đơn giản bằng chữ, ví dụ: "vận tốc bằng quãng đường chia thời gian")
+3. Câu hỏi định hướng: (3-5 câu hỏi giúp ${userTitle} tự nghĩ)
 4. Bài tập tương tự: (2 bài, chỉ đề bài)
 
-Yêu cầu:
-- Không giải bài
-- Không đưa đáp án
-- Dùng từ ngữ đơn giản, gần gũi với học sinh
+YÊU CẦU:
+- Tuyệt đối không giải bài
+- Không đưa ra đáp án cuối cùng
+- Chỉ gợi mở hướng giải quyết
+- Dùng từ ngữ đơn giản, gần gũi với ${userTitle}
 - Công thức viết bằng chữ, không dùng ký hiệu toán học
+- KHÔNG dùng dấu * để thay thế cho phép nhân
 
 Lịch sử chat:
 ${context}
@@ -812,46 +782,56 @@ Phân tích:
 - `;
         }
 
-        // Generate AI prompt for solution
-        function generateSolutionPrompt(question, subject, history, analysis) {
+        // Generate AI prompt for solution guidance
+        function generateSolutionGuidancePrompt(question, subject, history, analysis) {
             const subjectName = subject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học';
+            const userTitle = userRole === 'giáo viên' ? 'thầy/cô' : 'em';
             
             // Create context from chat history
             let context = "Lịch sử trò chuyện gần đây:\n";
             if (history && history.length > 0) {
                 context += history.slice(-3).map(msg => 
-                    `${msg.sender === 'nguoi-dung' ? 'Học sinh' : 'Bot'}: ${msg.message}`
+                    `${msg.sender === 'nguoi-dung' ? 'Người dùng' : 'Bot'}: ${msg.message}`
                 ).join('\n');
             } else {
                 context += "Chưa có lịch sử trò chuyện";
             }
             
-            return `Bạn là giáo viên ${subjectName} THPT. Hãy giải bài tập sau theo yêu cầu:
+            return `Bạn là giáo viên ${subjectName} THPT. Hãy HƯỚNG DẪN CÁCH TIẾP CẬN bài tập sau theo yêu cầu:
+
+QUY TẮC BẮT BUỘC:
+1. KHÔNG sử dụng ký tự * trong bất kỳ trường hợp nào
+2. KHÔNG được đưa ra đáp án cuối cùng
+3. KHÔNG tự động giải bài hoàn chỉnh
+4. Chỉ ở vai trò gợi mở tư duy học sinh
+5. Xưng hô: Thầy (cho bot) và em (cho học sinh) hoặc thầy/cô (cho giáo viên)
 
 Yêu cầu:
-1. Giải chi tiết từng bước
-2. Giải thích rõ ràng từng bước
+1. Hướng dẫn từng bước tiếp cận bài toán
+2. Giải thích cách suy nghĩ cho ${userTitle}
 3. Công thức viết bằng chữ, không dùng ký hiệu toán học
-4. Cuối cùng đưa ra 2 bài tập tương tự (chỉ đề bài)
+4. KHÔNG đưa ra lời giải hoàn chỉnh
+5. Cuối cùng đưa ra 2 bài tập tương tự (chỉ đề bài)
 
 Phân tích trước đó:
 ${analysis}
 
 Câu hỏi hiện tại: ${question}
 
-Giải bài:
+Hướng dẫn tiếp cận:
 1. `;
         }
 
         // Generate AI prompt for general response
         function generateGeneralPrompt(question, subject, history) {
             const subjectName = subject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học';
+            const userTitle = userRole === 'giáo viên' ? 'thầy/cô' : 'em';
             
             // Create context from chat history
             let context = "Lịch sử trò chuyện gần đây:\n";
             if (history && history.length > 0) {
                 context += history.slice(-3).map(msg => 
-                    `${msg.sender === 'nguoi-dung' ? 'Học sinh' : 'Bot'}: ${msg.message}`
+                    `${msg.sender === 'nguoi-dung' ? 'Người dùng' : 'Bot'}: ${msg.message}`
                 ).join('\n');
             } else {
                 context += "Chưa có lịch sử trò chuyện";
@@ -859,10 +839,16 @@ Giải bài:
             
             return `Bạn là giáo viên ${subjectName} THPT. Hãy trả lời câu hỏi sau một cách ngắn gọn, dễ hiểu:
 
+QUY TẮC BẮT BUỘC:
+1. KHÔNG sử dụng ký tự * trong bất kỳ trường hợp nào
+2. Xưng hô: Thầy (cho bot) và em (cho học sinh) hoặc thầy/cô (cho giáo viên)
+3. KHÔNG đưa ra lời giải hoàn chỉnh cho bài tập
+4. Chỉ gợi mở hướng giải quyết
+
 Yêu cầu:
 - Trả lời trực tiếp vào câu hỏi
 - Giải thích ngắn gọn, rõ ràng
-- Dùng từ ngữ đơn giản, gần gũi với học sinh, xưng học sinh là emem
+- Dùng từ ngữ đơn giản, gần gũi với ${userTitle}
 - Nếu là câu hỏi yêu cầu giải bài, hãy hướng dẫn cách tiếp cận chứ không giải chi tiết
 
 Lịch sử chat:
@@ -873,14 +859,86 @@ Câu hỏi hiện tại: ${question}
 Trả lời:`;
         }
 
+        // Generate prompt for similar exercises
+        function generateSimilarExercisesPrompt(question, subject, guidance) {
+            const subjectName = subject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học';
+            const userTitle = userRole === 'giáo viên' ? 'thầy/cô' : 'em';
+            
+            return `Bạn là giáo viên ${subjectName} THPT. Vừa rồi ${userTitle} đã phân tích bài tập sau:
+            
+Bài tập gốc:
+${question}
+
+Hướng dẫn tiếp cận:
+${guidance}
+
+Hãy tạo 2 bài tập tương tự cùng chủ đề và cùng mức độ khó để ${userTitle} có thể luyện tập thêm. Chỉ đưa ra đề bài, không cần giải.
+
+QUY TẮC:
+1. KHÔNG sử dụng ký tự *
+2. Chỉ đưa ra đề bài
+3. Cùng chủ đề và mức độ khó
+4. Đánh số thứ tự bài tập
+
+Bài tập tương tự:
+1. `;
+        }
+
+        // Check if the message contains a homework problem
+        function isHomeworkProblem(message) {
+            if (!message) return false;
+            
+            // Check for common problem indicators
+            const problemIndicators = [
+                "tính", "xác định", "cho biết", "bài toán", "tìm", 
+                "vận tốc", "khối lượng", "nồng độ", "phản ứng", 
+                "điện tích", "lực", "gia tốc", "nhiệt độ", "áp suất",
+                "bài tập", "giải bài", "làm bài"
+            ];
+            
+            // Check for math/physics/chemistry specific terms
+            const subjectTerms = {
+                'vat-ly': ["vật lý", "chuyển động", "điện", "từ trường", "quang học", "nhiệt"],
+                'hoa-hoc': ["hóa học", "phản ứng", "chất", "nguyên tử", "phân tử", "mol"]
+            };
+            
+            // Check for numbers in the message (likely a problem)
+            const hasNumbers = /\d/.test(message);
+            
+            // Check if the message contains problem indicators
+            const hasProblemIndicators = problemIndicators.some(indicator => 
+                message.toLowerCase().includes(indicator)
+            );
+            
+            // Check for subject-specific terms
+            const hasSubjectTerms = currentSubject && subjectTerms[currentSubject] ? 
+                subjectTerms[currentSubject].some(term => message.toLowerCase().includes(term)) : 
+                false;
+            
+            // Consider it a homework problem if it has either:
+            // 1. Numbers and problem indicators
+            // 2. Subject terms and problem indicators
+            // 3. Explicit request for solution
+            return (hasNumbers && hasProblemIndicators) || 
+                   (hasSubjectTerms && hasProblemIndicators) ||
+                   solutionRequestPhrases.test(message.toLowerCase());
+        }
+
         // Select subject
         function selectSubject(subject) {
             currentSubject = subject;
             subjectScreen.style.display = 'none';
             chatbotContainer.style.display = 'flex';
             
-            // Load chat history for this subject
-            loadSubjectChatHistory(subject);
+            // Ask for user role if not set
+            if (!userRole) {
+                const roleMessage = `Xin chào! Bạn là giáo viên hay học sinh? (Nhập "giáo viên" hoặc "học sinh")`;
+                themTinNhanVaoGiaoDien("bot", roleMessage);
+                addToChatHistory("bot", roleMessage, subject);
+            } else {
+                // Load chat history for this subject
+                loadSubjectChatHistory(subject);
+            }
         }
 
         // Process AI response for analysis
@@ -897,41 +955,36 @@ Trả lời:`;
                 ${response.replace(/\n/g, '<br>')}
             </div>`;
             
-            // Replace formulas with clear text
-            formattedResponse = formattedResponse.replace(/\$\sqrt\{2h\/10\}\$/g, 
-                '<div class="formula">căn bậc hai của (2 nhân độ cao h chia cho 10)</div>');
-            formattedResponse = formattedResponse.replace(/\$v = \sqrt\{2gh\}\$/g, 
-                '<div class="formula">vận tốc v = căn bậc hai của (2 nhân gia tốc trọng trường g nhân độ cao h)</div>');
-            formattedResponse = formattedResponse.replace(/\$F = m \cdot a\$/g, 
-                '<div class="formula">Lực F = khối lượng m nhân gia tốc a</div>');
+            // Replace any remaining * characters
+            formattedResponse = formattedResponse.replace(/\*/g, '');
             
             return formattedResponse;
         }
 
-        // Process AI response for solution
-        function processSolutionResponse(response) {
+        // Process AI response for solution guidance
+        async function processSolutionGuidanceResponse(response, originalQuestion, subject) {
             // Mark problem as solved
             currentProblem.solved = true;
             
             // Format the response for display
             let formattedResponse = response;
             
-            // Replace formulas with clear text
-            formattedResponse = formattedResponse.replace(/\$\sqrt\{2h\/10\}\$/g, 
-                '<div class="formula">căn bậc hai của (2 nhân độ cao h chia cho 10)</div>');
-            formattedResponse = formattedResponse.replace(/\$v = \sqrt\{2gh\}\$/g, 
-                '<div class="formula">vận tốc v = căn bậc hai của (2 nhân gia tốc trọng trường g nhân độ cao h)</div>');
-            formattedResponse = formattedResponse.replace(/\$F = m \cdot a\$/g, 
-                '<div class="formula">Lực F = khối lượng m nhân gia tốc a</div>');
+            // Replace any remaining * characters
+            formattedResponse = formattedResponse.replace(/\*/g, '');
             
             // Add exercise suggestions
-            const exerciseMatch = response.match(/Bài tập tương tự:([\s\S]*)/);
-            if (exerciseMatch) {
-                formattedResponse = formattedResponse.replace(exerciseMatch[0], '');
-                formattedResponse += `<div class="exercise-suggestion">
-                    <div class="exercise-suggestion-title"><i class="fas fa-tasks"></i> Bài tập tương tự</div>
-                    ${exerciseMatch[1].trim().replace(/\n/g, '<br>')}
+            try {
+                const prompt = generateSimilarExercisesPrompt(originalQuestion, subject, response);
+                const ketQua = await moHinh.generateContent(prompt);
+                const phanHoi = await ketQua.response;
+                const similarExercises = phanHoi.text().replace(/\*/g, '');
+                
+                formattedResponse += `<div class="similar-exercise">
+                    <div class="similar-exercise-title"><i class="fas fa-book"></i> Bài tập tương tự để luyện tập</div>
+                    ${similarExercises.replace(/\n/g, '<br>')}
                 </div>`;
+            } catch (error) {
+                console.error("Lỗi khi tạo bài tập tương tự:", error);
             }
             
             return formattedResponse;
@@ -942,6 +995,14 @@ Trả lời:`;
             const tinNhanNguoiDung = oNhapTinNhan.value.trim();
             if (!tinNhanNguoiDung && !uploadedFile) return;
 
+            // Check if user is setting their role
+            if (!userRole && (tinNhanNguoiDung.toLowerCase() === 'giáo viên' || tinNhanNguoiDung.toLowerCase() === 'học sinh')) {
+                userRole = tinNhanNguoiDung.toLowerCase() === 'giáo viên' ? 'giáo viên' : 'học sinh';
+                oNhapTinNhan.value = '';
+                loadSubjectChatHistory(currentSubject);
+                return;
+            }
+
             // Display user message
             if (uploadedFile) {
                 addToChatHistory("nguoi-dung", `Đã tải lên file: ${uploadedFile.name}`, currentSubject);
@@ -951,7 +1012,6 @@ Trả lời:`;
             }
             
             oNhapTinNhan.value = '';
-            oNhapTinNhanPreview.textContent = '';
             adjustTextareaHeight();
 
             // Show loading indicator
@@ -960,11 +1020,13 @@ Trả lời:`;
 
             try {
                 // Handle simple greetings
-                const loiChao = ["chào", "hello"];
+                const loiChao = ["chào", "hello", "xin chào"];
                 if (loiChao.some(chao => tinNhanNguoiDung.toLowerCase().includes(chao))) {
                     setTimeout(() => {
                         loadingIndicator.style.display = 'none';
-                        const response = `Chào bạn! Tôi là trợ lý học tập môn ${currentSubject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học'}. Tôi có thể giúp bạn học tập bằng cách phân tích câu hỏi và gợi ý hướng giải quyết. Bạn có câu hỏi gì về môn học này không?`;
+                        const response = userRole === 'giáo viên' ? 
+                            `Kính chào thầy/cô! Thầy có thể hỗ trợ gì cho thầy/cô về môn ${currentSubject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học'} không ạ?` :
+                            `Chào em! Thầy có thể giúp gì cho em về môn ${currentSubject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học'} không?`;
                         themTinNhanVaoGiaoDien("bot", response);
                         addToChatHistory("bot", response, currentSubject);
                     }, 1000);
@@ -976,7 +1038,9 @@ Trả lời:`;
                 if (isAskingForHomework) {
                     setTimeout(() => {
                         loadingIndicator.style.display = 'none';
-                        const response = `Bạn muốn bài tập về chủ đề nào trong môn ${currentSubject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học'}? Hãy cho tôi biết cụ thể để tôi có thể gợi ý bài tập phù hợp.`;
+                        const response = userRole === 'giáo viên' ? 
+                            `Thầy/cô muốn bài tập về chủ đề nào trong môn ${currentSubject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học'}?` :
+                            `Em muốn bài tập về chủ đề nào trong môn ${currentSubject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học'}?`;
                         themTinNhanVaoGiaoDien("bot", response);
                         addToChatHistory("bot", response, currentSubject);
                     }, 1500);
@@ -987,7 +1051,9 @@ Trả lời:`;
                 if (tinNhanNguoiDung && !laCauHoiTHPT(tinNhanNguoiDung)) {
                     setTimeout(() => {
                         loadingIndicator.style.display = 'none';
-                        const response = "Xin lỗi, tôi chỉ có thể giúp bạn với các câu hỏi và bài tập ở cấp độ THPT. Vui lòng hỏi những câu hỏi phù hợp hơn nhé.";
+                        const response = userRole === 'giáo viên' ?
+                            "Xin lỗi thầy/cô, thầy chỉ có thể giúp với các câu hỏi và bài tập ở cấp độ THPT." :
+                            "Xin lỗi em, thầy chỉ có thể giúp với các câu hỏi và bài tập ở cấp độ THPT.";
                         themTinNhanVaoGiaoDien("bot", response);
                         addToChatHistory("bot", response, currentSubject);
                     }, 1000);
@@ -1002,16 +1068,16 @@ Trả lời:`;
                 
                 // Check if we have a current problem that hasn't been solved yet
                 if (currentProblem && !currentProblem.solved && isAskingForSolution) {
-                    // Generate solution for the current problem
-                    const prompt = generateSolutionPrompt(tinNhanNguoiDung, currentSubject, recentHistory, currentProblem.analysis);
+                    // Generate solution guidance for the current problem
+                    const prompt = generateSolutionGuidancePrompt(tinNhanNguoiDung, currentSubject, recentHistory, currentProblem.analysis);
                     
                     // Get AI response
                     const ketQua = await moHinh.generateContent(prompt);
                     const phanHoi = await ketQua.response;
                     let traLoiBot = phanHoi.text();
                     
-                    // Process the solution response
-                    traLoiBot = processSolutionResponse(traLoiBot);
+                    // Process the solution guidance response
+                    traLoiBot = await processSolutionGuidanceResponse(traLoiBot, tinNhanNguoiDung, currentSubject);
                     
                     // Display response
                     loadingIndicator.style.display = 'none';
@@ -1023,20 +1089,17 @@ Trả lời:`;
                     return;
                 }
                 
-                // Check if the message looks like a homework problem
-                const isHomeworkProblem = tinNhanNguoiDung.includes("tính") || 
-                                        tinNhanNguoiDung.includes("xác định") || 
-                                        tinNhanNguoiDung.includes("cho biết") || 
-                                        tinNhanNguoiDung.includes("bài toán");
+                // Check if the message is a homework problem
+                const isHomeworkProblemValue = isHomeworkProblem(tinNhanNguoiDung);
                 
                 // Generate appropriate prompt
                 let prompt;
-                if (isAskingForSolution) {
-                    prompt = generateGeneralPrompt(tinNhanNguoiDung, currentSubject, recentHistory);
+                if (isHomeworkProblemValue) {
+                    // If it's a homework problem, use analysis prompt
+                    prompt = generateAnalysisPrompt(tinNhanNguoiDung, currentSubject, recentHistory);
                 } else {
-                    prompt = isHomeworkProblem ? 
-                        generateAnalysisPrompt(tinNhanNguoiDung, currentSubject, recentHistory) : 
-                        generateGeneralPrompt(tinNhanNguoiDung, currentSubject, recentHistory);
+                    // Otherwise use general prompt
+                    prompt = generateGeneralPrompt(tinNhanNguoiDung, currentSubject, recentHistory);
                 }
                 
                 // Get AI response
@@ -1044,19 +1107,13 @@ Trả lời:`;
                 const phanHoi = await ketQua.response;
                 let traLoiBot = phanHoi.text();
                 
+                // Remove any * characters from response
+                traLoiBot = traLoiBot.replace(/\*/g, '');
+                
                 // Process the response based on prompt type
-                if (prompt.includes("1. Chủ đề:")) {
+                if (isHomeworkProblemValue) {
                     // This is an analysis response
                     traLoiBot = processAnalysisResponse(traLoiBot);
-                } else {
-                    // This is a general or solution response
-                    // Replace formulas with clear text
-                    traLoiBot = traLoiBot.replace(/\$\sqrt\{2h\/10\}\$/g, 
-                        '<div class="formula">căn bậc hai của (2 nhân độ cao h chia cho 10)</div>');
-                    traLoiBot = traLoiBot.replace(/\$v = \sqrt\{2gh\}\$/g, 
-                        '<div class="formula">vận tốc v = căn bậc hai của (2 nhân gia tốc trọng trường g nhân độ cao h)</div>');
-                    traLoiBot = traLoiBot.replace(/\$F = m \cdot a\$/g, 
-                        '<div class="formula">Lực F = khối lượng m nhân gia tốc a</div>');
                 }
                 
                 // Display response
@@ -1070,7 +1127,9 @@ Trả lời:`;
             } catch (loi) {
                 console.error("Lỗi khi xử lý câu hỏi: ", loi);
                 loadingIndicator.style.display = 'none';
-                const response = "Rất tiếc, tôi gặp lỗi khi xử lý yêu cầu của bạn. Vui lòng thử lại sau!";
+                const response = userRole === 'giáo viên' ?
+                    "Xin lỗi thầy/cô, thầy gặp lỗi khi xử lý yêu cầu. Vui lòng thử lại sau!" :
+                    "Xin lỗi em, thầy gặp lỗi khi xử lý yêu cầu. Em vui lòng thử lại sau nhé!";
                 themTinNhanVaoGiaoDien("bot", response);
                 addToChatHistory("bot", response, currentSubject);
             }
