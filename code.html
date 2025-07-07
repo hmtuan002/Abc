@@ -1,0 +1,1763 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot học tập THPT</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background-color: #f5f7fa;
+            color: #333;
+            overflow: hidden;
+        }
+
+        .main-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background-color: #ffffff;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            margin: 20px;
+            overflow: hidden;
+        }
+
+        .app-header {
+            background: linear-gradient(135deg, #3a7bd5, #00d2ff);
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .app-header h1 {
+            margin: 0;
+            font-size: 1.8rem;
+            font-weight: 700;
+        }
+
+        .app-header .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #subjectScreen {
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+            padding: 20px;
+            text-align: center;
+        }
+
+        #subjectScreen h2 {
+            color: #3a7bd5;
+            margin-bottom: 30px;
+            font-size: 2rem;
+        }
+
+        .subject-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 25px;
+            width: 80%;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .subject-button {
+            background: linear-gradient(135deg, #3a7bd5, #00d2ff);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 25px 20px;
+            font-size: 1.3rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(58, 123, 213, 0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            height: 180px;
+        }
+
+        .subject-button i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+
+        .subject-button:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 20px rgba(58, 123, 213, 0.4);
+        }
+
+        #chatbot-container {
+            display: none;
+            flex-direction: column;
+            flex-grow: 1;
+            overflow: hidden;
+        }
+
+        .chat-area {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #khung-tro-chuyen {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .tin-nhan {
+            margin-bottom: 15px;
+            padding: 12px 18px;
+            border-radius: 12px;
+            max-width: 80%;
+            position: relative;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+            line-height: 1.5;
+            font-size: 1rem;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .tin-nhan-nguoi-dung {
+            background-color: #3a7bd5;
+            color: white;
+            margin-left: auto;
+            text-align: right;
+            border-bottom-right-radius: 5px;
+        }
+
+        .tin-nhan-bot {
+            background-color: #ffffff;
+            color: #333;
+            margin-right: auto;
+            text-align: left;
+            border-bottom-left-radius: 5px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .message-time {
+            font-size: 0.75rem;
+            opacity: 0.7;
+            margin-top: 5px;
+            text-align: right;
+        }
+
+        #khu-vuc-nhap {
+            display: flex;
+            padding: 15px;
+            background-color: #ffffff;
+            border-top: 1px solid #e0e0e0;
+            align-items: center;
+        }
+
+        #o-nhap-tin-nhan-container {
+            position: relative;
+            flex-grow: 1;
+            min-height: 50px;
+        }
+
+        #o-nhap-tin-nhan {
+            width: 100%;
+            background: #f5f7fa;
+            color: #333;
+            caret-color: #333;
+            padding: 12px 50px 12px 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 25px;
+            outline: none;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            min-height: 50px;
+            resize: none;
+            overflow: hidden;
+        }
+
+        #o-nhap-tin-nhan:focus {
+            border-color: #3a7bd5;
+            box-shadow: 0 0 0 3px rgba(58, 123, 213, 0.2);
+        }
+
+        .back-button {
+            background-color: transparent;
+            border: none;
+            color: #3a7bd5;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 15px;
+            border-radius: 8px;
+            transition: background-color 0.3s ease;
+            margin-right: auto;
+        }
+
+        .back-button:hover {
+            background-color: #f0f4ff;
+        }
+
+        .loading-indicator {
+            display: none;
+            padding: 10px 15px;
+            background-color: #ffffff;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            margin-right: auto;
+            border: 1px solid #e0e0e0;
+            width: fit-content;
+        }
+
+        .loading-dots {
+            display: flex;
+            gap: 5px;
+        }
+
+        .loading-dots span {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #3a7bd5;
+            display: inline-block;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+
+        .loading-dots span:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+
+        .loading-dots span:nth-child(2) {
+            animation-delay: -0.16s;
+        }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+
+        #file-upload {
+            display: none;
+        }
+
+        .file-upload-button {
+            background-color: #f5f7fa;
+            color: #3a7bd5;
+            border: 1px solid #e0e0e0;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            margin-right: 10px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 18px;
+            transition: all 0.3s ease;
+        }
+
+        .file-upload-button:hover {
+            background-color: #e0e8ff;
+        }
+
+        .knowledge-box {
+            background-color: #f0f7ff;
+            border-left: 4px solid #3a7bd5;
+            padding: 12px 15px;
+            margin: 10px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .knowledge-box-title {
+            font-weight: bold;
+            color: #3a7bd5;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .exercise-suggestion {
+            background-color: #f5fff0;
+            border-left: 4px solid #4CAF50;
+            padding: 12px 15px;
+            margin: 10px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .exercise-suggestion-title {
+            font-weight: bold;
+            color: #4CAF50;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .question-box {
+            background-color: #fff8f0;
+            border-left: 4px solid #FF9800;
+            padding: 12px 15px;
+            margin: 10px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .question-box-title {
+            font-weight: bold;
+            color: #FF9800;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .message-image {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 8px;
+            margin-top: 10px;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .message-image:hover {
+            transform: scale(1.02);
+        }
+
+        .file-attachment {
+            display: flex;
+            align-items: center;
+            background-color: #f5f5f5;
+            padding: 8px 12px;
+            border-radius: 8px;
+            margin-top: 10px;
+            max-width: 100%;
+            word-break: break-all;
+        }
+
+        .file-attachment i {
+            margin-right: 8px;
+            color: #3a7bd5;
+        }
+
+        .formula {
+            background-color: #f5f5f5;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            margin: 5px 0;
+        }
+
+        .similar-exercise {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #6c757d;
+        }
+
+        .similar-exercise-title {
+            font-weight: bold;
+            color: #6c757d;
+            margin-bottom: 5px;
+        }
+
+        /* Progress tracking styles */
+        .progress-container {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            width: 250px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+            z-index: 1000;
+            display: none;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .progress-title {
+            font-weight: bold;
+            color: #3a7bd5;
+            font-size: 1.1rem;
+        }
+
+        .close-progress {
+            background: none;
+            border: none;
+            color: #999;
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+
+        .progress-item {
+            margin-bottom: 10px;
+        }
+
+        .progress-topic {
+            font-weight: 500;
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .progress-bar-container {
+            height: 8px;
+            background-color: #f0f0f0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #3a7bd5, #00d2ff);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        .progress-stats {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .progress-toggle {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: linear-gradient(135deg, #3a7bd5, #00d2ff);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.2rem;
+            box-shadow: 0 4px 10px rgba(58, 123, 213, 0.3);
+            z-index: 1000;
+        }
+
+        /* Weekly reminder styles */
+        .reminder-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 300px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+            z-index: 1000;
+            display: none;
+        }
+
+        .reminder-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .reminder-title {
+            font-weight: bold;
+            color: #4CAF50;
+            font-size: 1.1rem;
+        }
+
+        .close-reminder {
+            background: none;
+            border: none;
+            color: #999;
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+
+        .reminder-item {
+            margin-bottom: 10px;
+            padding: 8px;
+            background-color: #f9f9f9;
+            border-radius: 6px;
+        }
+
+        .reminder-topic {
+            font-weight: 500;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        .reminder-exercise {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .reminder-toggle {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #4CAF50, #8BC34A);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.2rem;
+            box-shadow: 0 4px 10px rgba(76, 175, 80, 0.3);
+            z-index: 1000;
+        }
+
+        /* Review suggestion styles */
+        .review-suggestion {
+            background-color: #fff3e0;
+            border-left: 4px solid #FF9800;
+            padding: 12px 15px;
+            margin: 10px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .review-suggestion-title {
+            font-weight: bold;
+            color: #FF9800;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .main-container {
+                margin: 0;
+                border-radius: 0;
+            }
+
+            .app-header h1 {
+                font-size: 1.5rem;
+            }
+
+            .subject-buttons {
+                grid-template-columns: 1fr;
+                width: 100%;
+            }
+
+            .subject-button {
+                padding: 20px;
+                height: 150px;
+                font-size: 1.1rem;
+            }
+
+            .subject-button i {
+                font-size: 2.5rem;
+            }
+
+            #khung-tro-chuyen {
+                padding: 15px;
+            }
+
+            .tin-nhan {
+                max-width: 90%;
+                padding: 10px 15px;
+                font-size: 0.95rem;
+            }
+
+            #khu-vuc-nhap {
+                padding: 10px;
+            }
+
+            #o-nhap-tin-nhan {
+                padding: 10px 45px 10px 15px;
+                min-height: 45px;
+                font-size: 0.95rem;
+            }
+
+            #nut-gui {
+                width: 36px;
+                height: 36px;
+                font-size: 16px;
+            }
+
+            .file-upload-button {
+                width: 36px;
+                height: 36px;
+                font-size: 16px;
+            }
+
+            .progress-container {
+                width: 90%;
+                left: 5%;
+                right: auto;
+            }
+
+            .reminder-container {
+                width: 90%;
+                left: 5%;
+                right: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- Header -->
+        <div class="app-header">
+            <div class="logo">
+                <i class="fas fa-graduation-cap"></i>
+                <h1>Chatbot Học Tập THPT</h1>
+            </div>
+        </div>
+
+        <!-- Subject Selection Screen -->
+        <div id="subjectScreen">
+            <h2>Chọn môn học</h2>
+            <div class="subject-buttons">
+                <button class="subject-button" data-subject="vat-ly">
+                    <i class="fas fa-atom"></i>
+                    Vật Lý
+                </button>
+                <button class="subject-button" data-subject="hoa-hoc">
+                    <i class="fas fa-flask"></i>
+                    Hóa Học
+                </button>
+            </div>
+        </div>
+
+        <!-- Chatbot Screen -->
+        <div id="chatbot-container">
+            <button class="back-button" id="backButton">
+                <i class="fas fa-arrow-left"></i> Quay lại môn học
+            </button>
+            <div class="chat-area">
+                <div id="khung-tro-chuyen"></div>
+                <div class="loading-indicator" id="loadingIndicator">
+                    <div class="loading-dots">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
+                <div id="khu-vuc-nhap">
+                    <label for="file-upload" class="file-upload-button">
+                        <i class="fas fa-paperclip"></i>
+                    </label>
+                    <input type="file" id="file-upload" accept="image/*,.pdf,.doc,.docx,.txt">
+                    <div id="o-nhap-tin-nhan-container">
+                        <textarea id="o-nhap-tin-nhan" placeholder="Nhập câu hỏi của bạn hoặc tải lên file đề bài..." rows="1"></textarea>
+                        <button id="nut-gui">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progress Tracking Toggle -->
+    <button class="progress-toggle" id="progressToggle">
+        <i class="fas fa-chart-line"></i>
+    </button>
+
+    <!-- Progress Tracking Panel -->
+    <div class="progress-container" id="progressContainer">
+        <div class="progress-header">
+            <div class="progress-title">Tiến độ học tập</div>
+            <button class="close-progress" id="closeProgress">&times;</button>
+        </div>
+        <div id="progressContent">
+            <!-- Progress items will be added here dynamically -->
+        </div>
+    </div>
+
+    <!-- Weekly Reminder Toggle -->
+    <button class="reminder-toggle" id="reminderToggle">
+        <i class="fas fa-bell"></i>
+    </button>
+
+    <!-- Weekly Reminder Panel -->
+    <div class="reminder-container" id="reminderContainer">
+        <div class="reminder-header">
+            <div class="reminder-title">Gợi ý luyện tập tuần này</div>
+            <button class="close-reminder" id="closeReminder">&times;</button>
+        </div>
+        <div id="reminderContent">
+            <!-- Reminder items will be added here dynamically -->
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script type="importmap">
+        {
+            "imports": {
+                "@google/generative-ai": "https://esm.run/@google/generative-ai"
+            }
+        }
+    </script>
+    <script type="module">
+        import { GoogleGenerativeAI } from "@google/generative-ai";
+
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCyhGASygL5BVBB-0pJJNwoyTZ61pAzP7c",
+            authDomain: "tieuhoc-a7f57.firebaseapp.com",
+            projectId: "tieuhoc-a7f57",
+            storageBucket: "tieuhoc-a7f57.appspot.com",
+            messagingSenderId: "736631398515",
+            appId: "1:736631398515:web:a41bbabeeb98c3df42ca06"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const storage = firebase.storage();
+
+        // Gemini AI configuration
+        const KHOA_API = "AIzaSyAn9dMMM5u8dEGpI8mEzQvdMSuI8KFH8jM"; 
+        const moHinhAI = new GoogleGenerativeAI(KHOA_API);
+        const moHinh = moHinhAI.getGenerativeModel({ model: "gemini-2.0-flash-thinking-exp-01-21" });
+
+        // DOM elements
+        const subjectScreen = document.getElementById('subjectScreen');
+        const chatbotContainer = document.getElementById('chatbot-container');
+        const khungTroChuyen = document.getElementById('khung-tro-chuyen');
+        const oNhapTinNhan = document.getElementById('o-nhap-tin-nhan');
+        const nutGui = document.getElementById('nut-gui');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const subjectButtons = document.querySelectorAll('.subject-button');
+        const backButton = document.getElementById('backButton');
+        const fileUpload = document.getElementById('file-upload');
+        const progressToggle = document.getElementById('progressToggle');
+        const progressContainer = document.getElementById('progressContainer');
+        const closeProgress = document.getElementById('closeProgress');
+        const progressContent = document.getElementById('progressContent');
+        const reminderToggle = document.getElementById('reminderToggle');
+        const reminderContainer = document.getElementById('reminderContainer');
+        const closeReminder = document.getElementById('closeReminder');
+        const reminderContent = document.getElementById('reminderContent');
+
+        // Global variables
+        let currentSubject = '';
+        let chatHistory = [];
+        let uploadedFile = null;
+        let currentProblem = null;
+        let userRole = 'học sinh'; // Mặc định là học sinh
+        let userProgress = {}; // Theo dõi tiến độ học tập
+        let weaknessAreas = {}; // Theo dõi điểm yếu
+        let lastReminderDate = null; // Ngày gửi nhắc nhở cuối cùng
+
+        // General exclude keywords for high school level
+        const generalExcludeKeywords = [
+            "đại học", "cao học", "nghiên cứu", "phân tích chuyên sâu", "triết học",
+            "kinh tế vĩ mô", "chính trị quốc tế", "tôn giáo", "đức tin"
+        ];
+        
+        // Homework request phrases
+        const homeworkRequestPhrases = /(cho (tôi|em) bài tập|xin bài tập|gợi ý bài tập|bài tập về)/;
+        
+        // Problem solving phrases (when user asks for solution)
+        const solutionRequestPhrases = /(giải bài|giải giúp|đáp án|kết quả|hướng dẫn giải|bài giải|làm bài|giải thích|cách làm)/;
+
+        // Back to subject selection function
+        function backToSubjects() {
+            currentSubject = '';
+            subjectScreen.style.display = 'flex';
+            chatbotContainer.style.display = 'none';
+        }
+
+        // Initialize the app
+        function initApp() {
+            // Add event listeners to subject buttons
+            subjectButtons.forEach(button => {
+                button.addEventListener('click', () => selectSubject(button.dataset.subject));
+            });
+
+            // Add event listener to send button
+            nutGui.addEventListener('click', guiTinNhan);
+            
+            // Add event listener for back button
+            backButton.addEventListener('click', backToSubjects);
+            
+            // Add event listener for Enter key in message input
+            oNhapTinNhan.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    guiTinNhan();
+                }
+            });
+
+            // Adjust textarea height when typing
+            oNhapTinNhan.addEventListener('input', adjustTextareaHeight);
+
+            // File upload handler
+            fileUpload.addEventListener('change', handleFileUpload);
+
+            // Progress tracking toggle
+            progressToggle.addEventListener('click', toggleProgressPanel);
+            closeProgress.addEventListener('click', toggleProgressPanel);
+
+            // Reminder toggle
+            reminderToggle.addEventListener('click', toggleReminderPanel);
+            closeReminder.addEventListener('click', toggleReminderPanel);
+
+            // Load data from localStorage
+            loadChatHistory();
+            loadUserProgress();
+            loadWeaknessAreas();
+            loadLastReminderDate();
+
+            // Check if we should show weekly reminders
+            checkWeeklyReminders();
+        }
+
+        // Toggle progress panel visibility
+        function toggleProgressPanel() {
+            if (progressContainer.style.display === 'block') {
+                progressContainer.style.display = 'none';
+            } else {
+                progressContainer.style.display = 'block';
+                updateProgressDisplay();
+            }
+        }
+
+        // Toggle reminder panel visibility
+        function toggleReminderPanel() {
+            if (reminderContainer.style.display === 'block') {
+                reminderContainer.style.display = 'none';
+            } else {
+                reminderContainer.style.display = 'block';
+                updateReminderDisplay();
+            }
+        }
+
+        // Update progress display
+        function updateProgressDisplay() {
+            if (!currentSubject) {
+                progressContent.innerHTML = '<div class="progress-item">Vui lòng chọn môn học để xem tiến độ</div>';
+                return;
+            }
+
+            const subjectName = currentSubject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học';
+            let html = `<div class="progress-item">
+                <div class="progress-topic">Môn học: <span>${subjectName}</span></div>
+                <div class="progress-stats">Tổng số bài đã làm: ${userProgress[currentSubject]?.totalExercises || 0}</div>
+                <div class="progress-stats">Tổng số bài đã hoàn thành: ${userProgress[currentSubject]?.completedExercises || 0}</div>
+            </div>`;
+
+            // Add topics progress
+            if (userProgress[currentSubject]?.topics) {
+                Object.entries(userProgress[currentSubject].topics).forEach(([topic, stats]) => {
+                    const completionRate = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
+                    html += `
+                        <div class="progress-item">
+                            <div class="progress-topic">
+                                <span>${topic}</span>
+                                <span>${completionRate}%</span>
+                            </div>
+                            <div class="progress-bar-container">
+                                <div class="progress-bar" style="width: ${completionRate}%"></div>
+                            </div>
+                            <div class="progress-stats">${stats.completed}/${stats.total} bài đã hoàn thành</div>
+                        </div>
+                    `;
+                });
+            }
+
+            progressContent.innerHTML = html;
+        }
+
+        // Update reminder display
+        function updateReminderDisplay() {
+            if (!currentSubject) {
+                reminderContent.innerHTML = '<div class="reminder-item">Vui lòng chọn môn học để xem gợi ý</div>';
+                return;
+            }
+
+            const subjectName = currentSubject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học';
+            let html = `<div class="reminder-item">
+                <div class="reminder-topic">Môn học: ${subjectName}</div>
+            </div>`;
+
+            // Add weakness reminders
+            if (weaknessAreas[currentSubject]) {
+                Object.entries(weaknessAreas[currentSubject]).forEach(([topic, exercises]) => {
+                    html += `
+                        <div class="reminder-item">
+                            <div class="reminder-topic">Ôn tập: ${topic}</div>
+                            <div class="reminder-exercise">${exercises.join('<br>')}</div>
+                        </div>
+                    `;
+                });
+            }
+
+            reminderContent.innerHTML = html;
+        }
+
+        // Check if we should show weekly reminders
+        function checkWeeklyReminders() {
+            const now = new Date();
+            const oneWeek = 7 * 24 * 60 * 60 * 1000; // 1 tuần tính bằng mili giây
+            
+            if (!lastReminderDate || (now - new Date(lastReminderDate)) >= oneWeek) {
+                // Đã qua 1 tuần kể từ lần nhắc nhở cuối cùng
+                generateWeeklyReminders();
+                lastReminderDate = now.toISOString();
+                saveLastReminderDate();
+                
+                // Hiển thị thông báo
+                setTimeout(() => {
+                    const reminderMessage = userRole === 'giáo viên' ? 
+                        `Thầy/cô ơi, thầy đã phân tích điểm yếu và gợi ý bài tập cho tuần này. Nhấn vào biểu tượng chuông để xem nhé!` :
+                        `Em ơi, thầy đã phân tích điểm yếu và gợi ý bài tập cho tuần này. Nhấn vào biểu tượng chuông để xem nhé!`;
+                    
+                    themTinNhanVaoGiaoDien("bot", reminderMessage);
+                    addToChatHistory("bot", reminderMessage, currentSubject);
+                }, 3000);
+            }
+        }
+
+        // Generate weekly practice reminders based on weaknesses
+        async function generateWeeklyReminders() {
+            if (!currentSubject) return;
+
+            const subjectName = currentSubject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học';
+            
+            // Tạo prompt cho AI để phân tích điểm yếu và gợi ý bài tập
+            const prompt = `Bạn là giáo viên ${subjectName} THPT. Dựa trên các bài tập mà học sinh đã gặp khó khăn, hãy:
+            
+1. Xác định 3 chủ đề mà học sinh cần ôn tập nhiều nhất
+2. Gợi ý 2 bài tập cho mỗi chủ đề để luyện tập trong tuần này
+
+Dữ liệu bài tập đã làm:
+${JSON.stringify(userProgress[currentSubject]?.topics || {})}
+
+Điểm yếu đã phát hiện:
+${JSON.stringify(weaknessAreas[currentSubject] || {})}
+
+Yêu cầu:
+- Chỉ đưa ra đề bài, không giải
+- Bài tập phù hợp với trình độ THPT
+- Sắp xếp theo mức độ từ dễ đến khó
+
+Kết quả phân tích:
+1. Chủ đề 1: 
+- Bài tập 1: 
+- Bài tập 2: 
+
+2. Chủ đề 2: 
+- Bài tập 1: 
+- Bài tập 2: 
+
+3. Chủ đề 3: 
+- Bài tập 1: 
+- Bài tập 2: `;
+
+            try {
+                const ketQua = await moHinh.generateContent(prompt);
+                const phanHoi = await ketQua.response;
+                const reminders = phanHoi.text();
+                
+                // Parse the response and update weakness areas
+                updateWeaknessFromReminders(reminders);
+                
+                // Lưu vào weaknessAreas và cập nhật hiển thị
+                saveWeaknessAreas();
+                updateReminderDisplay();
+                
+            } catch (error) {
+                console.error("Lỗi khi tạo gợi ý tuần:", error);
+            }
+        }
+
+        // Update weakness areas from AI reminders
+        function updateWeaknessFromReminders(remindersText) {
+            if (!currentSubject) return;
+            
+            // Tạo đối tượng weaknessAreas nếu chưa có
+            if (!weaknessAreas[currentSubject]) {
+                weaknessAreas[currentSubject] = {};
+            }
+            
+            // Phân tích câu trả lời từ AI
+            const lines = remindersText.split('\n');
+            let currentTopic = '';
+            
+            for (const line of lines) {
+                if (line.startsWith('Chủ đề')) {
+                    // Extract topic name
+                    const topicMatch = line.match(/Chủ đề \d+: (.+)/);
+                    if (topicMatch && topicMatch[1]) {
+                        currentTopic = topicMatch[1].trim();
+                        weaknessAreas[currentSubject][currentTopic] = [];
+                    }
+                } else if (line.startsWith('- Bài tập') && currentTopic) {
+                    // Extract exercise
+                    const exercise = line.replace(/^- Bài tập \d+: /, '').trim();
+                    if (exercise) {
+                        weaknessAreas[currentSubject][currentTopic].push(exercise);
+                    }
+                }
+            }
+        }
+
+        // Handle file upload
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            uploadedFile = file;
+            
+            // Display file info in chat
+            const fileName = file.name.length > 20 ? file.name.substring(0, 17) + '...' : file.name;
+            const fileType = file.type.split('/')[0];
+            
+            if (fileType === 'image') {
+                // Display image preview
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const messageTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    const messageContent = `Đã tải lên hình ảnh: ${fileName}<div class="message-time">${messageTime}</div>`;
+                    
+                    const divTinNhan = document.createElement('div');
+                    divTinNhan.classList.add('tin-nhan', 'tin-nhan-nguoi-dung');
+                    divTinNhan.innerHTML = messageContent;
+                    
+                    const imgElement = document.createElement('img');
+                    imgElement.src = e.target.result;
+                    imgElement.className = 'message-image';
+                    divTinNhan.appendChild(imgElement);
+                    
+                    khungTroChuyen.appendChild(divTinNhan);
+                    khungTroChuyen.scrollTop = khungTroChuyen.scrollHeight;
+                    
+                    addToChatHistory("nguoi-dung", `Đã tải lên hình ảnh: ${fileName}`, currentSubject);
+                };
+                reader.readAsDataURL(file);
+            } else {
+                // Display file info
+                const messageTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const messageContent = `Đã tải lên file: ${fileName}<div class="message-time">${messageTime}</div>`;
+                
+                const divTinNhan = document.createElement('div');
+                divTinNhan.classList.add('tin-nhan', 'tin-nhan-nguoi-dung');
+                divTinNhan.innerHTML = messageContent;
+                
+                const fileElement = document.createElement('div');
+                fileElement.className = 'file-attachment';
+                fileElement.innerHTML = `<i class="fas fa-file"></i> ${fileName}`;
+                divTinNhan.appendChild(fileElement);
+                
+                khungTroChuyen.appendChild(divTinNhan);
+                khungTroChuyen.scrollTop = khungTroChuyen.scrollHeight;
+                
+                addToChatHistory("nguoi-dung", `Đã tải lên file: ${fileName}`, currentSubject);
+            }
+            
+            // Clear file input
+            event.target.value = '';
+        }
+
+        // Adjust textarea height based on content
+        function adjustTextareaHeight() {
+            oNhapTinNhan.style.height = 'auto';
+            oNhapTinNhan.style.height = (oNhapTinNhan.scrollHeight) + 'px';
+        }
+
+        // Add message to chat interface
+        function themTinNhanVaoGiaoDien(nguoiGui, vanBan) {
+            const divTinNhan = document.createElement('div');
+            divTinNhan.classList.add('tin-nhan', `tin-nhan-${nguoiGui}`);
+
+            // Add timestamp from chat history
+            const lastMessage = chatHistory.slice(-1)[0];
+            const messageTime = lastMessage && lastMessage.timestamp 
+                ? new Date(lastMessage.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            divTinNhan.innerHTML = vanBan + `<div class="message-time">${messageTime}</div>`;
+            khungTroChuyen.appendChild(divTinNhan);
+            
+            // Scroll to bottom of chat
+            khungTroChuyen.scrollTop = khungTroChuyen.scrollHeight;
+        }
+
+        // Add message to chat history
+        function addToChatHistory(nguoiGui, vanBan, subject) {
+            const timestamp = new Date().toISOString();
+            chatHistory.push({
+                sender: nguoiGui,
+                message: vanBan,
+                subject: subject,
+                timestamp: timestamp
+            });
+            
+            // Save to localStorage
+            localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+        }
+
+        // Load chat history from localStorage
+        function loadChatHistory() {
+            const savedHistory = localStorage.getItem('chatHistory');
+            if (savedHistory) {
+                chatHistory = JSON.parse(savedHistory);
+            }
+        }
+
+        // Load user progress from localStorage
+        function loadUserProgress() {
+            const savedProgress = localStorage.getItem('userProgress');
+            if (savedProgress) {
+                userProgress = JSON.parse(savedProgress);
+            } else {
+                userProgress = {
+                    'vat-ly': { 
+                        totalExercises: 0, 
+                        completedExercises: 0,
+                        topics: {} 
+                    },
+                    'hoa-hoc': { 
+                        totalExercises: 0,
+                        completedExercises: 0,
+                        topics: {} 
+                    }
+                };
+            }
+        }
+
+        // Load weakness areas from localStorage
+        function loadWeaknessAreas() {
+            const savedWeakness = localStorage.getItem('weaknessAreas');
+            if (savedWeakness) {
+                weaknessAreas = JSON.parse(savedWeakness);
+            } else {
+                weaknessAreas = {
+                    'vat-ly': {},
+                    'hoa-hoc': {}
+                };
+            }
+        }
+
+        // Load last reminder date from localStorage
+        function loadLastReminderDate() {
+            const savedDate = localStorage.getItem('lastReminderDate');
+            if (savedDate) {
+                lastReminderDate = savedDate;
+            }
+        }
+
+        // Save user progress to localStorage
+        function saveUserProgress() {
+            localStorage.setItem('userProgress', JSON.stringify(userProgress));
+        }
+
+        // Save weakness areas to localStorage
+        function saveWeaknessAreas() {
+            localStorage.setItem('weaknessAreas', JSON.stringify(weaknessAreas));
+        }
+
+        // Save last reminder date to localStorage
+        function saveLastReminderDate() {
+            localStorage.setItem('lastReminderDate', lastReminderDate);
+        }
+
+        // Update user progress when completing an exercise
+        function updateUserProgress(topic, isCompleted) {
+            if (!currentSubject) return;
+            
+            // Initialize subject progress if not exists
+            if (!userProgress[currentSubject]) {
+                userProgress[currentSubject] = { 
+                    totalExercises: 0, 
+                    completedExercises: 0,
+                    topics: {} 
+                };
+            }
+            
+            // Update total exercises count
+            userProgress[currentSubject].totalExercises += 1;
+            
+            // Update completed exercises count if completed
+            if (isCompleted) {
+                userProgress[currentSubject].completedExercises += 1;
+            }
+            
+            // Initialize topic if not exists
+            if (!userProgress[currentSubject].topics[topic]) {
+                userProgress[currentSubject].topics[topic] = {
+                    total: 0,
+                    completed: 0,
+                    mistakes: 0
+                };
+            }
+            
+            // Update topic stats
+            const topicStats = userProgress[currentSubject].topics[topic];
+            topicStats.total += 1;
+            
+            if (isCompleted) {
+                topicStats.completed += 1;
+            } else {
+                topicStats.mistakes += 1;
+                
+                // If mistake rate is high, add to weakness areas
+                const mistakeRate = topicStats.mistakes / topicStats.total;
+                if (mistakeRate > 0.5 && !weaknessAreas[currentSubject][topic]) {
+                    weaknessAreas[currentSubject][topic] = [];
+                    saveWeaknessAreas();
+                }
+            }
+            
+            // Save updated progress
+            saveUserProgress();
+            updateProgressDisplay();
+        }
+
+        // Load chat history for a specific subject
+        function loadSubjectChatHistory(subject) {
+            // Clear current chat
+            khungTroChuyen.innerHTML = '';
+            
+            // Filter messages for this subject
+            const subjectMessages = chatHistory.filter(msg => msg.subject === subject);
+            
+            // Display all messages
+            subjectMessages.forEach(msg => {
+                const divTinNhan = document.createElement('div');
+                divTinNhan.classList.add('tin-nhan', `tin-nhan-${msg.sender}`);
+                
+                const messageTime = msg.timestamp 
+                    ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                
+                divTinNhan.innerHTML = msg.message + `<div class="message-time">${messageTime}</div>`;
+                khungTroChuyen.appendChild(divTinNhan);
+            });
+            
+            // If no messages, show welcome
+            if (subjectMessages.length === 0) {
+                const welcomeMessage = userRole === 'giáo viên' ? 
+                    `Kính chào thầy/cô! Thầy là trợ lý học tập môn ${subject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học'}. Thầy có thể hỗ trợ thầy/cô trong việc giảng dạy.` :
+                    `Chào em! Thầy là trợ lý học tập môn ${subject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học'}. Thầy có thể giúp em học tập bằng cách gợi mở tư duy. Em có câu hỏi gì về môn học này không?`;
+                
+                themTinNhanVaoGiaoDien("bot", welcomeMessage);
+                addToChatHistory("bot", welcomeMessage, subject);
+            }
+        }
+
+        // Generate AI prompt for analysis
+        function generateAnalysisPrompt(question, subject, history) {
+            const subjectName = subject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học';
+            const userTitle = userRole === 'giáo viên' ? 'thầy/cô' : 'em';
+            
+            // Create context from chat history
+            let context = "Lịch sử trò chuyện gần đây:\n";
+            if (history && history.length > 0) {
+                context += history.slice(-3).map(msg => 
+                    `${msg.sender === 'nguoi-dung' ? 'Người dùng' : 'Bot'}: ${msg.message}`
+                ).join('\n');
+            } else {
+                context += "Chưa có lịch sử trò chuyện";
+            }
+            
+            return `Bạn là giáo viên ${subjectName} THPT. Hãy phân tích câu hỏi sau theo yêu cầu:
+
+QUY TẮC BẮT BUỘC:
+1. KHÔNG sử dụng ký tự * trong bất kỳ trường hợp nào
+2. KHÔNG được đưa ra đáp án cuối cùng
+3. KHÔNG tự động giải bài hoàn chỉnh
+4. Chỉ ở vai trò gợi mở tư duy học sinh
+5. Xưng hô: Thầy (cho bot) và em (cho học sinh) hoặc thầy/cô (cho giáo viên)
+
+1. Chủ đề: (Chỉ ghi tên chủ đề chính)
+2. Kiến thức liên quan:
+- Khái niệm: (Dùng từ ngữ đơn giản, dễ hiểu)
+- Công thức: (Viết đơn giản bằng chữ, ví dụ: "vận tốc bằng quãng đường chia thời gian")
+3. Câu hỏi định hướng: (3-5 câu hỏi giúp ${userTitle} tự nghĩ)
+4. Bài tập tương tự: (2 bài, chỉ đề bài)
+
+YÊU CẦU:
+- Tuyệt đối không giải bài
+- Không đưa ra đáp án cuối cùng
+- Chỉ gợi mở hướng giải quyết
+- Dùng từ ngữ đơn giản, gần gũi với ${userTitle}
+- Công thức viết bằng chữ, không dùng ký hiệu toán học
+- KHÔNG dùng dấu * để thay thế cho phép nhân
+
+Lịch sử chat:
+${context}
+
+Câu hỏi hiện tại: ${question}
+
+Phân tích:
+1. Chủ đề: 
+2. Kiến thức liên quan:
+- Khái niệm: 
+- Công thức: 
+3. Câu hỏi định hướng:
+- 
+- 
+- 
+4. Bài tập tương tự:
+- 
+- `;
+        }
+
+        // Generate AI prompt for solution guidance
+        function generateSolutionGuidancePrompt(question, subject, history, analysis) {
+            const subjectName = subject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học';
+            const userTitle = userRole === 'giáo viên' ? 'thầy/cô' : 'em';
+            
+            // Create context from chat history
+            let context = "Lịch sử trò chuyện gần đây:\n";
+            if (history && history.length > 0) {
+                context += history.slice(-3).map(msg => 
+                    `${msg.sender === 'nguoi-dung' ? 'Người dùng' : 'Bot'}: ${msg.message}`
+                ).join('\n');
+            } else {
+                context += "Chưa có lịch sử trò chuyện";
+            }
+            
+            return `Bạn là giáo viên ${subjectName} THPT. Hãy HƯỚNG DẪN CÁCH TIẾP CẬN bài tập sau theo yêu cầu:
+
+QUY TẮC BẮT BUỘC:
+1. KHÔNG sử dụng ký tự * trong bất kỳ trường hợp nào
+2. KHÔNG được đưa ra đáp án cuối cùng
+3. KHÔNG tự động giải bài hoàn chỉnh
+4. Chỉ ở vai trò gợi mở tư duy học sinh
+5. Xưng hô: Thầy (cho bot) và em (cho học sinh) hoặc thầy/cô (cho giáo viên)
+
+Yêu cầu:
+1. Hướng dẫn từng bước tiếp cận bài toán
+2. Giải thích cách suy nghĩ cho ${userTitle}
+3. Công thức viết bằng chữ, không dùng ký hiệu toán học
+4. KHÔNG đưa ra lời giải hoàn chỉnh
+5. KHÔNG đưa ra bài tập tương tự
+
+Phân tích trước đó:
+${analysis}
+
+Câu hỏi hiện tại: ${question}
+
+Hướng dẫn tiếp cận:
+1. `;
+        }
+
+        // Generate AI prompt for general response
+        function generateGeneralPrompt(question, subject, history) {
+            const subjectName = subject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học';
+            const userTitle = userRole === 'giáo viên' ? 'thầy/cô' : 'em';
+            
+            // Create context from chat history
+            let context = "Lịch sử trò chuyện gần đây:\n";
+            if (history && history.length > 0) {
+                context += history.slice(-3).map(msg => 
+                    `${msg.sender === 'nguoi-dung' ? 'Người dùng' : 'Bot'}: ${msg.message}`
+                ).join('\n');
+            } else {
+                context += "Chưa có lịch sử trò chuyện";
+            }
+            
+            return `Bạn là giáo viên ${subjectName} THPT. Hãy trả lời câu hỏi sau một cách ngắn gọn, dễ hiểu:
+
+QUY TẮC BẮT BUỘC:
+1. KHÔNG sử dụng ký tự * trong bất kỳ trường hợp nào
+2. Xưng hô: Thầy (cho bot) và em (cho học sinh) hoặc thầy/cô (cho giáo viên)
+3. KHÔNG đưa ra lời giải hoàn chỉnh cho bài tập
+4. Chỉ gợi mở hướng giải quyết
+
+Yêu cầu:
+- Trả lời trực tiếp vào câu hỏi
+- Giải thích ngắn gọn, rõ ràng
+- Dùng từ ngữ đơn giản, gần gũi với ${userTitle}
+- Nếu là câu hỏi yêu cầu giải bài, hãy hướng dẫn cách tiếp cận chứ không giải chi tiết
+
+Lịch sử chat:
+${context}
+
+Câu hỏi hiện tại: ${question}
+
+Trả lời:`;
+        }
+
+        // Generate prompt for similar exercises
+        function generateSimilarExercisesPrompt(question, subject, guidance) {
+            const subjectName = subject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học';
+            const userTitle = userRole === 'giáo viên' ? 'thầy/cô' : 'em';
+            
+            return `Bạn là giáo viên ${subjectName} THPT. Vừa rồi ${userTitle} đã phân tích bài tập sau:
+            
+Bài tập gốc:
+${question}
+
+Hướng dẫn tiếp cận:
+${guidance}
+
+Hãy tạo 2 bài tập tương tự cùng chủ đề và cùng mức độ khó để ${userTitle} có thể luyện tập thêm. Chỉ đưa ra đề bài, không cần giải.
+
+QUY TẮC:
+1. KHÔNG sử dụng ký tự *
+2. Chỉ đưa ra đề bài
+3. Cùng chủ đề và mức độ khó
+4. Đánh số thứ tự bài tập
+
+Bài tập tương tự:
+1. `;
+        }
+
+        // Generate prompt for review suggestion
+        function generateReviewSuggestionPrompt(topic, subject, mistakes) {
+            const subjectName = subject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học';
+            const userTitle = userRole === 'giáo viên' ? 'thầy/cô' : 'em';
+            
+            return `Bạn là giáo viên ${subjectName} THPT. ${userTitle} đang gặp khó khăn với chủ đề ${topic} (đã mắc ${mistakes} lỗi). Hãy:
+            
+1. Giải thích ngắn gọn những điểm quan trọng cần nhớ về chủ đề này
+2. Gợi ý 1-2 bài tập đơn giản để ${userTitle} có thể luyện tập lại
+
+YÊU CẦU:
+1. KHÔNG sử dụng ký tự *
+2. Giải thích bằng ngôn ngữ đơn giản, dễ hiểu
+3. Chỉ đưa ra đề bài, không giải chi tiết
+4. Xưng hô: Thầy (cho bot) và em (cho học sinh) hoặc thầy/cô (cho giáo viên)
+
+Gợi ý ôn tập:
+1. Kiến thức quan trọng:
+- 
+- 
+
+2. Bài tập luyện lại:
+- 
+- `;
+        }
+
+        // Check if the message contains a homework problem
+        function isHomeworkProblem(message) {
+            if (!message) return false;
+            
+            // Check if it's a complete exercise (contains question and data)
+            const isCompleteExercise = /(bài|bài tập|câu|hỏi)\s*\d+[:.]?\s*.+[\n\r].+[\n\r].+/i.test(message);
+            
+            // Check for numbers and question marks (likely a problem)
+            const hasNumbersAndQuestion = /\d/.test(message) && /\?/.test(message);
+            
+            // Check for multi-line input (likely a problem)
+            const hasMultipleLines = message.split('\n').length > 2;
+            
+            // Check for uploaded file (likely a problem)
+            const hasUploadedFile = uploadedFile !== null;
+            
+            return isCompleteExercise || hasNumbersAndQuestion || hasMultipleLines || hasUploadedFile;
+        }
+
+        // Select subject
+        function selectSubject(subject) {
+            currentSubject = subject;
+            subjectScreen.style.display = 'none';
+            chatbotContainer.style.display = 'flex';
+            
+            // Ask for user role if not set
+            if (!userRole) {
+                const roleMessage = `Xin chào! Bạn là giáo viên hay học sinh? (Nhập "giáo viên" hoặc "học sinh")`;
+                themTinNhanVaoGiaoDien("bot", roleMessage);
+                addToChatHistory("bot", roleMessage, subject);
+            } else {
+                // Load chat history for this subject
+                loadSubjectChatHistory(subject);
+            }
+        }
+
+        // Process AI response for analysis
+        function processAnalysisResponse(response) {
+            // Store the current problem analysis
+            currentProblem = {
+                analysis: response,
+                solved: false
+            };
+            
+            // Extract topic from response
+            const topicMatch = response.match(/1\. Chủ đề: (.+)/);
+            const topic = topicMatch && topicMatch[1] ? topicMatch[1].trim() : 'Không xác định';
+            
+            // Update progress (count as attempted but not completed)
+            updateUserProgress(topic, false);
+            
+            // Format the response for display
+            let formattedResponse = `<div class="knowledge-box">
+                <div class="knowledge-box-title"><i class="fas fa-lightbulb"></i> Phân tích bài toán</div>
+                ${response.replace(/\n/g, '<br>')}
+            </div>`;
+            
+            // Replace any remaining * characters
+            formattedResponse = formattedResponse.replace(/\*/g, '');
+            
+            return formattedResponse;
+        }
+
+        // Process AI response for solution guidance
+        async function processSolutionGuidanceResponse(response, originalQuestion, subject) {
+            // Mark problem as solved
+            currentProblem.solved = true;
+            
+            // Extract topic from original analysis
+            const topicMatch = currentProblem.analysis.match(/1\. Chủ đề: (.+)/);
+            const topic = topicMatch && topicMatch[1] ? topicMatch[1].trim() : 'Không xác định';
+            
+            // Update progress (count as completed)
+            updateUserProgress(topic, true);
+            
+            // Format the response for display
+            let formattedResponse = response;
+            
+            // Replace any remaining * characters
+            formattedResponse = formattedResponse.replace(/\*/g, '');
+            
+            return formattedResponse;
+        }
+
+        // Check if user needs review suggestion
+        async function checkForReviewSuggestion(topic) {
+            if (!currentSubject || !userProgress[currentSubject]?.topics[topic]) return;
+            
+            const topicStats = userProgress[currentSubject].topics[topic];
+            const mistakeRate = topicStats.mistakes / topicStats.total;
+            
+            // Suggest review if mistake rate is high
+            if (mistakeRate > 0.5) {
+                try {
+                    const prompt = generateReviewSuggestionPrompt(topic, currentSubject, topicStats.mistakes);
+                    const ketQua = await moHinh.generateContent(prompt);
+                    const phanHoi = await ketQua.response;
+                    const reviewSuggestion = phanHoi.text().replace(/\*/g, '');
+                    
+                    const formattedResponse = `<div class="review-suggestion">
+                        <div class="review-suggestion-title"><i class="fas fa-exclamation-triangle"></i> Gợi ý ôn tập</div>
+                        ${reviewSuggestion.replace(/\n/g, '<br>')}
+                    </div>`;
+                    
+                    // Add to chat
+                    themTinNhanVaoGiaoDien("bot", formattedResponse);
+                    addToChatHistory("bot", formattedResponse, currentSubject);
+                    
+                    // Add to weakness areas if not already there
+                    if (!weaknessAreas[currentSubject][topic]) {
+                        weaknessAreas[currentSubject][topic] = [];
+                        saveWeaknessAreas();
+                    }
+                    
+                } catch (error) {
+                    console.error("Lỗi khi tạo gợi ý ôn tập:", error);
+                }
+            }
+        }
+
+        // Send message
+        async function guiTinNhan() {
+            const tinNhanNguoiDung = oNhapTinNhan.value.trim();
+            if (!tinNhanNguoiDung && !uploadedFile) return;
+
+            // Check if user is setting their role
+            if (!userRole && (tinNhanNguoiDung.toLowerCase() === 'giáo viên' || tinNhanNguoiDung.toLowerCase() === 'học sinh')) {
+                userRole = tinNhanNguoiDung.toLowerCase() === 'giáo viên' ? 'giáo viên' : 'học sinh';
+                oNhapTinNhan.value = '';
+                loadSubjectChatHistory(currentSubject);
+                return;
+            }
+
+            // Display user message
+            if (uploadedFile) {
+                // File upload message is already handled in handleFileUpload function
+            } else {
+                themTinNhanVaoGiaoDien("nguoi-dung", tinNhanNguoiDung);
+                addToChatHistory("nguoi-dung", tinNhanNguoiDung, currentSubject);
+            }
+            
+            oNhapTinNhan.value = '';
+            adjustTextareaHeight();
+
+            // Show loading indicator
+            loadingIndicator.style.display = 'block';
+            khungTroChuyen.scrollTop = khungTroChuyen.scrollHeight;
+
+            try {
+                // Handle simple greetings
+                const loiChao = ["chào", "hello", "xin chào"];
+                if (loiChao.some(chao => tinNhanNguoiDung.toLowerCase().includes(chao))) {
+                    setTimeout(() => {
+                        loadingIndicator.style.display = 'none';
+                        const response = userRole === 'giáo viên' ? 
+                            `Kính chào thầy/cô! Thầy có thể hỗ trợ gì cho thầy/cô về môn ${currentSubject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học'} không ạ?` :
+                            `Chào em! Thầy có thể giúp gì cho em về môn ${currentSubject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học'} không?`;
+                        themTinNhanVaoGiaoDien("bot", response);
+                        addToChatHistory("bot", response, currentSubject);
+                    }, 1000);
+                    return;
+                }
+
+                // Handle homework requests
+                const isAskingForHomework = homeworkRequestPhrases.test(tinNhanNguoiDung.toLowerCase());
+                if (isAskingForHomework) {
+                    setTimeout(() => {
+                        loadingIndicator.style.display = 'none';
+                        const response = userRole === 'giáo viên' ? 
+                            `Thầy/cô muốn bài tập về chủ đề nào trong môn ${currentSubject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học'}?` :
+                            `Em muốn bài tập về chủ đề nào trong môn ${currentSubject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học'}?`;
+                        themTinNhanVaoGiaoDien("bot", response);
+                        addToChatHistory("bot", response, currentSubject);
+                    }, 1500);
+                    return;
+                }
+
+                // Check if question is appropriate
+                if (tinNhanNguoiDung && !laCauHoiTHPT(tinNhanNguoiDung)) {
+                    setTimeout(() => {
+                        loadingIndicator.style.display = 'none';
+                        const response = userRole === 'giáo viên' ?
+                            "Xin lỗi thầy/cô, thầy chỉ có thể giúp với các câu hỏi và bài tập ở cấp độ THPT." :
+                            "Xin lỗi em, thầy chỉ có thể giúp với các câu hỏi và bài tập ở cấp độ THPT.";
+                        themTinNhanVaoGiaoDien("bot", response);
+                        addToChatHistory("bot", response, currentSubject);
+                    }, 1000);
+                    return;
+                }
+
+                // Get recent chat history
+                const recentHistory = chatHistory.filter(msg => msg.subject === currentSubject).slice(-3);
+                
+                // Check if user is asking for a solution
+                const isAskingForSolution = solutionRequestPhrases.test(tinNhanNguoiDung.toLowerCase());
+                
+                // Check if we have a current problem that hasn't been solved yet
+                if (currentProblem && !currentProblem.solved && isAskingForSolution) {
+                    // Generate solution guidance for the current problem
+                    const prompt = generateSolutionGuidancePrompt(tinNhanNguoiDung, currentSubject, recentHistory, currentProblem.analysis);
+                    
+                    // Get AI response
+                    const ketQua = await moHinh.generateContent(prompt);
+                    const phanHoi = await ketQua.response;
+                    let traLoiBot = phanHoi.text();
+                    
+                    // Process the solution guidance response
+                    traLoiBot = await processSolutionGuidanceResponse(traLoiBot, tinNhanNguoiDung, currentSubject);
+                    
+                    // Display response
+                    loadingIndicator.style.display = 'none';
+                    themTinNhanVaoGiaoDien("bot", traLoiBot);
+                    addToChatHistory("bot", traLoiBot, currentSubject);
+                    
+                    // Check if we should suggest review
+                    const topicMatch = currentProblem.analysis.match(/1\. Chủ đề: (.+)/);
+                    if (topicMatch && topicMatch[1]) {
+                        const topic = topicMatch[1].trim();
+                        checkForReviewSuggestion(topic);
+                    }
+                    
+                    // Clear uploaded file
+                    uploadedFile = null;
+                    return;
+                }
+                
+                // Check if the message is a homework problem (complete exercise)
+                const isHomeworkProblemValue = isHomeworkProblem(tinNhanNguoiDung);
+                
+                // Generate appropriate prompt
+                let prompt;
+                if (isHomeworkProblemValue) {
+                    // If it's a homework problem, use analysis prompt
+                    prompt = generateAnalysisPrompt(tinNhanNguoiDung, currentSubject, recentHistory);
+                } else {
+                    // Otherwise use general prompt
+                    prompt = generateGeneralPrompt(tinNhanNguoiDung, currentSubject, recentHistory);
+                }
+                
+                // Get AI response
+                const ketQua = await moHinh.generateContent(prompt);
+                const phanHoi = await ketQua.response;
+                let traLoiBot = phanHoi.text();
+                
+                // Remove any * characters from response
+                traLoiBot = traLoiBot.replace(/\*/g, '');
+                
+                // Process the response based on prompt type
+                if (isHomeworkProblemValue) {
+                    // This is an analysis response
+                    traLoiBot = processAnalysisResponse(traLoiBot);
+                }
+                
+                // Display response
+                loadingIndicator.style.display = 'none';
+                themTinNhanVaoGiaoDien("bot", traLoiBot);
+                addToChatHistory("bot", traLoiBot, currentSubject);
+                
+                // Clear uploaded file
+                uploadedFile = null;
+
+            } catch (loi) {
+                console.error("Lỗi khi xử lý câu hỏi: ", loi);
+                loadingIndicator.style.display = 'none';
+                const response = userRole === 'giáo viên' ?
+                    "Xin lỗi thầy/cô, thầy gặp lỗi khi xử lý yêu cầu. Vui lòng thử lại sau!" :
+                    "Xin lỗi em, thầy gặp lỗi khi xử lý yêu cầu. Em vui lòng thử lại sau nhé!";
+                themTinNhanVaoGiaoDien("bot", response);
+                addToChatHistory("bot", response, currentSubject);
+            }
+        }
+
+        // Check if question is appropriate for high school level
+        function laCauHoiTHPT(cauHoi) {
+            if (!cauHoi) return true;
+            
+            const cauHoiThuong = cauHoi.toLowerCase();
+            return !generalExcludeKeywords.some(tuKhoa => cauHoiThuong.includes(tuKhoa));
+        }
+
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>
