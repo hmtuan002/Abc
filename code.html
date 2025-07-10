@@ -877,41 +877,33 @@
     }
 
     // Update progress display
-    function updateProgressDisplay() {
-        if (!currentSubject) {
-            progressContent.innerHTML = '<div class="progress-item">Vui lòng chọn môn học để xem tiến độ</div>';
-            return;
-        }
-
-        const subjectName = currentSubject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học';
-        let html = `<div class="progress-item">
-            <div class="progress-topic">Môn học: <span>${subjectName}</span></div>
-            <div class="progress-stats">Tổng số bài đã làm: ${userProgress[currentSubject]?.totalExercises || 0}</div>
-            <div class="progress-stats">Tổng số bài đã hoàn thành: ${userProgress[currentSubject]?.completedExercises || 0}</div>
-        </div>`;
-
-        // Add topics progress
-        if (userProgress[currentSubject]?.topics) {
-            Object.entries(userProgress[currentSubject].topics).forEach(([topic, stats]) => {
-                const completionRate = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
-                html += `
-                    <div class="progress-item">
-                        <div class="progress-topic">
-                            <span>${topic}</span>
-                            <span>${completionRate}%</span>
-                        </div>
-                        <div class="progress-bar-container">
-                            <div class="progress-bar" style="width: ${completionRate}%"></div>
-                        </div>
-                        <div class="progress-stats">${stats.completed}/${stats.total} bài đã hoàn thành</div>
-                    </div>
-                `;
-            });
-        }
-
-        progressContent.innerHTML = html;
+function updateProgressDisplay() {
+    if (!currentSubject) {
+        progressContent.innerHTML = '<div class="progress-item">Vui lòng chọn môn học để xem tiến độ</div>';
+        return;
     }
 
+    const subjectName = currentSubject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học';
+    const totalExercises = userProgress[currentSubject]?.totalExercises || 0;
+    const completedExercises = userProgress[currentSubject]?.completedExercises || 0;
+    const completionRate = totalExercises > 0 ? Math.round((completedExercises / totalExercises) * 100) : 0;
+
+    let html = `<div class="progress-item">
+        <div class="progress-topic">Môn học: <span>${subjectName}</span></div>
+        <div class="progress-stats">Tổng số bài đã làm: ${totalExercises}</div>
+        <div class="progress-stats">Tổng số bài đã hoàn thành: ${completedExercises}</div>
+        <div class="progress-topic">
+            <span>Tiến độ hoàn thành</span>
+            <span>${completionRate}%</span>
+        </div>
+        <div class="progress-bar-container">
+            <div class="progress-bar" style="width: ${completionRate}%"></div>
+        </div>
+        <div class="progress-stats">${completedExercises}/${totalExercises} bài đã hoàn thành</div>
+    </div>`;
+
+    progressContent.innerHTML = html;
+}
     // Update reminder display
     function updateReminderDisplay() {
         if (!currentSubject) {
