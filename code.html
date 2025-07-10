@@ -1209,56 +1209,63 @@ Kết quả phân tích:
     }
 
     // Update user progress when completing an exercise
-    function updateUserProgress(topic, isCompleted) {
-        if (!currentSubject) return;
-        
-        // Initialize subject progress if not exists
-        if (!userProgress[currentSubject]) {
-            userProgress[currentSubject] = { 
-                totalExercises: 0, 
-                completedExercises: 0,
-                topics: {} 
-            };
-        }
-        
-        // Initialize topic if not exists
-        if (!userProgress[currentSubject].topics[topic]) {
-            userProgress[currentSubject].topics[topic] = {
-                total: 0,
-                completed: 0,
-                mistakes: 0
-            };
-        }
-        
-        // Get topic stats
-        const topicStats = userProgress[currentSubject].topics[topic];
-        
-        // Only update total if this is a new problem (not an answer attempt)
-        if (isCompleted === undefined) {
+   function updateUserProgress(topic, isCompleted) {
+    if (!currentSubject) return;
+    
+    // Initialize subject progress if not exists
+    if (!userProgress[currentSubject]) {
+        userProgress[currentSubject] = { 
+            totalExercises: 0, 
+            completedExercises: 0,
+            topics: {} 
+        };
+    }
+    
+    // Initialize topic if not exists
+    if (!userProgress[currentSubject].topics[topic]) {
+        userProgress[currentSubject].topics[topic] = {
+            total: 0,
+            completed: 0,
+            mistakes: 0
+        };
+    }
+    
+    // Get topic stats
+    const topicStats = userProgress[currentSubject].topics[topic];
+    
+    // Only update total if this is a new problem (not an answer attempt)
+    if (isCompleted === undefined) {
+        // Chỉ cập nhật nếu chưa có bài tập nào trong topic hoặc bài tập hiện tại khác bài trước đó
+        if (topicStats.total === 0 || currentProblem.question !== userProgress[currentSubject].lastProblem) {
             userProgress[currentSubject].totalExercises += 1;
             topicStats.total += 1;
+            userProgress[currentSubject].lastProblem = currentProblem.question;
         }
-        // Update completed count if answer is correct
-        else if (isCompleted) {
+    }
+    // Update completed count if answer is correct và chưa được tính trước đó
+    else if (isCompleted) {
+        if (!currentProblem.countedAsCompleted) {
             userProgress[currentSubject].completedExercises += 1;
             topicStats.completed += 1;
+            currentProblem.countedAsCompleted = true; // Đánh dấu đã được tính
         }
-        // Update mistakes count if answer is wrong
-        else {
-            topicStats.mistakes += 1;
-            
-            // If mistake rate is high, add to weakness areas
-            const mistakeRate = topicStats.mistakes / topicStats.total;
-            if (mistakeRate > 0.5 && !weaknessAreas[currentSubject][topic]) {
-                weaknessAreas[currentSubject][topic] = [];
-                saveWeaknessAreas();
-            }
-        }
-        
-        // Save updated progress
-        saveUserProgress();
-        updateProgressDisplay();
     }
+    // Update mistakes count if answer is wrong
+    else {
+        topicStats.mistakes += 1;
+        
+        // If mistake rate is high, add to weakness areas
+        const mistakeRate = topicStats.mistakes / topicStats.total;
+        if (mistakeRate > 0.5 && !weaknessAreas[currentSubject][topic]) {
+            weaknessAreas[currentSubject][topic] = [];
+            saveWeaknessAreas();
+        }
+    }
+    
+    // Save updated progress
+    saveUserProgress();
+    updateProgressDisplay();
+}
 
     // Load chat history for a specific subject
     function loadSubjectChatHistory(subject) {
@@ -1480,102 +1487,113 @@ Gợi ý ôn tập:
 - `;
     }
 
-    async function checkStudentAnswer(studentAnswer) {
+ async function checkStudentAnswer(studentAnswer) {
     try {
+        // Kiểm tra bài toán hiện tại
         if (!currentProblem || !currentProblem.question) {
             throw new Error("Không tìm thấy bài toán hiện tại");
         }
 
+        // Hiển thị indicator loading
         loadingIndicator.style.display = 'block';
-        
+        scrollToBottom();
+
+        // Tạo prompt chuẩn để AI trả lời theo cấu trúc rõ ràng
         const prompt = `Bạn là giáo viên ${currentSubject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học'} THPT. 
-Hãy kiểm tra đáp án sau đây của học sinh với bài toán sau:
+Hãy kiểm tra đáp án và trả lời theo ĐÚNG CẤU TRÚC sau:
 
-Bài toán:
-${currentProblem.question}
+[KẾT QUẢ] // "CHÍNH XÁC" hoặc "SAI"
+[GIẢI THÍCH] // Giải thích chi tiết (nếu sai) hoặc khen ngợi (nếu đúng)
+[BÀI TẬP] // 2 bài tương tự (chỉ khi đúng)
 
-Đáp án học sinh đưa ra:
-${studentAnswer}
-
-Hãy phân tích và:
-1. Xác định đáp án đúng/sai
-2. Nếu sai:
-   - Giải thích chi tiết lý do sai
-   - Hướng dẫn cách tiếp cận đúng
-   - Không đưa ra đáp án cuối cùng
-3. Nếu đúng:
-   - Đưa ra 2 bài tập tương tự
+Bài toán: ${currentProblem.question}
+Đáp án học sinh: ${studentAnswer}
 
 Yêu cầu:
-- Xưng hô thầy - em
-- Giải thích rõ ràng, thân thiện
-- Không dùng ký tự *
-- Trả lời theo định dạng:
-[ĐÚNG/SAI]
-[Phần nội dung tương ứng]`;
+1. Luôn bắt đầu bằng [KẾT QUẢ]
+2. Giải thích rõ từng bước
+3. Không dùng ký tự *`;
 
+        // Gọi API AI
         const ketQua = await moHinh.generateContent(prompt);
         const phanHoi = await ketQua.response;
         let traLoiBot = phanHoi.text().trim();
-        
-        loadingIndicator.style.display = 'none';
-        
-        // Xử lý phản hồi
-        const topicMatch = currentProblem.analysis.match(/1\. Chủ đề: (.+)/);
-        const topic = topicMatch && topicMatch[1] ? topicMatch[1].trim() : 'Không xác định';
-        
-        // Xử lý response để đảm bảo không có lỗi định dạng
-        traLoiBot = traLoiBot.replace(/\*/g, ''); // Loại bỏ các ký tự *
-        
-        if (traLoiBot.startsWith("ĐÚNG")) {
-            const similarExercises = traLoiBot.split('\n').slice(1).join('\n').trim();
-            
-            let response = `<div class="exercise-suggestion">
+
+        // Xử lý phản hồi AI
+        const ketQuaMatch = traLoiBot.match(/\[KẾT QUẢ\]\s*(CHÍNH XÁC|SAI)/i);
+        const giaiThichMatch = traLoiBot.match(/\[GIẢI THÍCH\]\s*([\s\S]*?)(\n\[BÀI TẬP\]|$)/i);
+        const baiTapMatch = traLoiBot.match(/\[BÀI TẬP\]\s*([\s\S]*)/i);
+
+        // Kiểm tra phản hồi hợp lệ
+        if (!ketQuaMatch || !giaiThichMatch) {
+            throw new Error("Phản hồi từ hệ thống không đúng định dạng");
+        }
+
+        const isCorrect = ketQuaMatch[1].toUpperCase() === "CHÍNH XÁC";
+        const giaiThich = giaiThichMatch[1].trim();
+        const baiTapTuongTu = baiTapMatch ? baiTapMatch[1].trim() : null;
+
+        // Xác định chủ đề
+        const topicMatch = currentProblem.analysis.match(/1\. Chủ đề:\s*(.+)/);
+        const topic = topicMatch ? topicMatch[1].trim() : 'Không xác định';
+
+        // Tạo thông báo phù hợp
+        let responseHtml;
+        if (isCorrect) {
+            // KHUNG XANH CHO ĐÁP ÁN ĐÚNG
+            responseHtml = `<div class="exercise-suggestion">
                 <div class="exercise-suggestion-title"><i class="fas fa-check-circle"></i> Chính xác!</div>
-                Em làm rất tốt! Đáp án của em hoàn toàn chính xác.`;
-                
-            if (similarExercises) {
-                response += `<br><br><div class="similar-exercise">
-                    <div class="similar-exercise-title"><i class="fas fa-lightbulb"></i> Bài tập tương tự</div>
-                    ${similarExercises.replace(/\n/g, '<br>')}
+                ${giaiThich.replace(/\n/g, '<br>')}`;
+
+            if (baiTapTuongTu) {
+                responseHtml += `<div class="similar-exercise">
+                    <div class="similar-exercise-title"><i class="fas fa-lightbulb"></i> Bài tập luyện thêm</div>
+                    ${baiTapTuongTu.replace(/\n/g, '<br>')}
                 </div>`;
             }
+
+            responseHtml += `</div>`;
             
-            themTinNhanVaoGiaoDien("bot", response);
-            addToChatHistory("bot", response, currentSubject);
+            // Cập nhật trạng thái
             currentProblem.solved = true;
             updateUserProgress(topic, true);
-        } else if (traLoiBot.startsWith("SAI")) {
-            const explanation = traLoiBot.split('\n').slice(1).join('\n').trim();
-            
-            let response = `<div class="question-box">
-                <div class="question-box-title"><i class="fas fa-exclamation-circle"></i> Đáp án chưa chính xác</div>
-                <strong>Thầy thấy đáp án của em có chỗ chưa đúng:</strong><br><br>
-                ${explanation.replace(/\n/g, '<br>')}<br><br>
+        } else {
+            // KHUNG ĐỎ CHO ĐÁP ÁN SAI
+            responseHtml = `<div class="question-box">
+                <div class="question-box-title"><i class="fas fa-exclamation-circle"></i> Cần cải thiện</div>
+                ${giaiThich.replace(/\n/g, '<br>')}<br><br>
                 <strong>Em hãy:</strong><br>
-                - Xem lại các bước làm<br>
-                - Kiểm tra công thức và tính toán<br>
-                - Gửi lại đáp án sau khi đã điều chỉnh<br><br>
-                Thầy tin em sẽ làm được!
+                - Kiểm tra lại các bước giải<br>
+                - Xem lại công thức đã dùng<br>
+                - Tính toán lại cẩn thận
             </div>`;
             
-            themTinNhanVaoGiaoDien("bot", response);
-            addToChatHistory("bot", response, currentSubject);
             updateUserProgress(topic, false);
-        } else {
-            // Nếu không đúng định dạng, xử lý như một thông báo lỗi thông thường
-            themTinNhanVaoGiaoDien("bot", traLoiBot);
-            addToChatHistory("bot", traLoiBot, currentSubject);
         }
+
+        // Hiển thị kết quả
+        loadingIndicator.style.display = 'none';
+        themTinNhanVaoGiaoDien("bot", responseHtml);
+        addToChatHistory("bot", responseHtml, currentSubject);
+
     } catch (error) {
         console.error("Lỗi khi kiểm tra đáp án:", error);
         loadingIndicator.style.display = 'none';
-        const response = "Xin lỗi em, thầy gặp lỗi khi kiểm tra đáp án. Em vui lòng thử lại sau nhé!";
-        themTinNhanVaoGiaoDien("bot", response);
-        addToChatHistory("bot", response, currentSubject);
+        
+        // Thông báo lỗi thân thiện
+        const errorHtml = `<div class="question-box">
+            <div class="question-box-title"><i class="fas fa-times-circle"></i> Lỗi hệ thống</div>
+            Thầy chưa thể kiểm tra đáp án ngay bây giờ.<br>
+            Em vui lòng:<br>
+            1. Kiểm tra lại cách giải<br>
+            2. Thử lại sau ít phút<br>
+            Xin lỗi em vì sự bất tiện này!
+        </div>`;
+        
+        themTinNhanVaoGiaoDien("bot", errorHtml);
+        addToChatHistory("bot", errorHtml, currentSubject);
     }
 }
-
     // Helper function to check if user is asking for solution
     function isAskingForSolution(message) {
         return solutionRequestPhrases.test(message.toLowerCase());
@@ -1619,7 +1637,6 @@ Yêu cầu:
 function processAnalysisResponse(response, originalQuestion) {
     // Kiểm tra xem response có phải là phân tích không
     const isAnalysis = response.includes("Chủ đề:") || 
-                      response.includes("Chủ đề:") || 
                       response.includes("Kiến thức liên quan:") || 
                       response.includes("Câu hỏi định hướng:");
     
@@ -1629,25 +1646,30 @@ function processAnalysisResponse(response, originalQuestion) {
             currentProblem = {
                 question: originalQuestion,
                 analysis: response,
-                solved: false
+                solved: false,
+                countedAsCompleted: false // Thêm trường này để theo dõi
             };
             
-            const topicMatch = response.match(/1\. Chủ đề:\s*(.+)|Chủ đề:\s*(.+)/);
-            const topic = (topicMatch && topicMatch[1]) ? topicMatch[1].trim() : 
-                         (topicMatch && topicMatch[2]) ? topicMatch[2].trim() : 'Không xác định';
-            
-            updateUserProgress(topic);
-            
-            // Format response for display - xử lý linh hoạt các định dạng khác nhau
+            // Sửa regex để xử lý cả 2 định dạng số thứ tự
             let formattedResponse = response
                 .replace(/\*/g, '')
-                .replace(/(1\. )?Chủ đề:\s*(.+)/, '<strong>1. Chủ đề:</strong> $2')
-                .replace(/(2\. )?Kiến thức liên quan:\s*/g, '<strong>2. Kiến thức liên quan:</strong>')
+                // Xử lý cả 2 định dạng: "1. Chủ đề:" và "Chủ đề:"
+                .replace(/(\d+\.\s*)?Chủ đề:\s*(.+)/g, '<strong>1. Chủ đề:</strong> $2')
+                .replace(/(\d+\.\s*)?Kiến thức liên quan:\s*/g, '<strong>2. Kiến thức liên quan:</strong>')
                 .replace(/- Khái niệm:\s*(.+)/g, '<div class="formula">- Khái niệm: $1</div>')
                 .replace(/- Công thức:\s*(.+)/g, '<div class="formula">- Công thức: $1</div>')
-                .replace(/(3\. )?Câu hỏi định hướng:\s*/g, '<strong>3. Câu hỏi định hướng:</strong>')
-                .replace(/(4\. )?Bài tập tương tự:\s*/g, '<strong>4. Bài tập tương tự:</strong>')
+                .replace(/(\d+\.\s*)?Câu hỏi định hướng:\s*/g, '<strong>3. Câu hỏi định hướng:</strong>')
+                .replace(/(\d+\.\s*)?Bài tập tương tự:\s*/g, '<strong>4. Bài tập tương tự:</strong>')
                 .replace(/\n/g, '<br>');
+            
+            // Thêm regex để xóa các số thứ tự thừa trong nội dung
+            formattedResponse = formattedResponse.replace(/(<br>|\n)\d+\.\s*/g, '$1- ');
+            
+            const topicMatch = response.match(/(1\. )?Chủ đề:\s*(.+)|Chủ đề:\s*(.+)/);
+            const topic = (topicMatch && topicMatch[2]) ? topicMatch[2].trim() : 
+                         (topicMatch && topicMatch[3]) ? topicMatch[3].trim() : 'Không xác định';
+            
+            updateUserProgress(topic);
             
             return `<div class="knowledge-box">
                 <div class="knowledge-box-title"><i class="fas fa-lightbulb"></i> Phân tích bài toán</div>
@@ -1663,7 +1685,6 @@ function processAnalysisResponse(response, originalQuestion) {
     currentProblem = null;
     return response.replace(/\*/g, '');
 }
-
     // Process AI response for solution guidance
     async function processSolutionGuidanceResponse(response, originalQuestion, subject) {
         // Mark problem as solved
