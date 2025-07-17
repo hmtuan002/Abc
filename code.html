@@ -397,6 +397,21 @@
             margin-bottom: 5px;
         }
 
+        .problem-summary {
+            background-color: #f0f0f0;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            font-family: monospace;
+            border-left: 3px solid #3a7bd5;
+        }
+
+        .summary-title {
+            font-weight: bold;
+            color: #3a7bd5;
+            margin-bottom: 5px;
+        }
+
         /* Progress tracking styles */
         .progress-container {
             position: fixed;
@@ -657,6 +672,10 @@
         <div id="subjectScreen">
             <h2>Chọn môn học</h2>
             <div class="subject-buttons">
+                <button class="subject-button" data-subject="toan-hoc">
+                    <i class="fas fa-square-root-alt"></i>
+                    Toán Học
+                </button>
                 <button class="subject-button" data-subject="vat-ly">
                     <i class="fas fa-atom"></i>
                     Vật Lý
@@ -787,7 +806,6 @@
     let chatHistory = [];
     let uploadedFile = null;
     let currentProblem = null;
-    let userRole = 'học sinh'; // Mặc định là học sinh
     let userProgress = {}; // Theo dõi tiến độ học tập
     let weaknessAreas = {}; // Theo dõi điểm yếu
     let lastReminderDate = null; // Ngày gửi nhắc nhở cuối cùng
@@ -877,33 +895,37 @@
     }
 
     // Update progress display
-function updateProgressDisplay() {
-    if (!currentSubject) {
-        progressContent.innerHTML = '<div class="progress-item">Vui lòng chọn môn học để xem tiến độ</div>';
-        return;
+    function updateProgressDisplay() {
+        if (!currentSubject) {
+            progressContent.innerHTML = '<div class="progress-item">Vui lòng chọn môn học để xem tiến độ</div>';
+            return;
+        }
+
+        const subjectName = 
+            currentSubject === 'toan-hoc' ? 'Toán Học' : 
+            currentSubject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học';
+        
+        const totalExercises = userProgress[currentSubject]?.totalExercises || 0;
+        const completedExercises = userProgress[currentSubject]?.completedExercises || 0;
+        const completionRate = totalExercises > 0 ? Math.round((completedExercises / totalExercises) * 100) : 0;
+
+        let html = `<div class="progress-item">
+            <div class="progress-topic">Môn học: <span>${subjectName}</span></div>
+            <div class="progress-stats">Tổng số bài đã làm: ${totalExercises}</div>
+            <div class="progress-stats">Tổng số bài đã hoàn thành: ${completedExercises}</div>
+            <div class="progress-topic">
+                <span>Tiến độ hoàn thành</span>
+                <span>${completionRate}%</span>
+            </div>
+            <div class="progress-bar-container">
+                <div class="progress-bar" style="width: ${completionRate}%"></div>
+            </div>
+            <div class="progress-stats">${completedExercises}/${totalExercises} bài đã hoàn thành</div>
+        </div>`;
+
+        progressContent.innerHTML = html;
     }
 
-    const subjectName = currentSubject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học';
-    const totalExercises = userProgress[currentSubject]?.totalExercises || 0;
-    const completedExercises = userProgress[currentSubject]?.completedExercises || 0;
-    const completionRate = totalExercises > 0 ? Math.round((completedExercises / totalExercises) * 100) : 0;
-
-    let html = `<div class="progress-item">
-        <div class="progress-topic">Môn học: <span>${subjectName}</span></div>
-        <div class="progress-stats">Tổng số bài đã làm: ${totalExercises}</div>
-        <div class="progress-stats">Tổng số bài đã hoàn thành: ${completedExercises}</div>
-        <div class="progress-topic">
-            <span>Tiến độ hoàn thành</span>
-            <span>${completionRate}%</span>
-        </div>
-        <div class="progress-bar-container">
-            <div class="progress-bar" style="width: ${completionRate}%"></div>
-        </div>
-        <div class="progress-stats">${completedExercises}/${totalExercises} bài đã hoàn thành</div>
-    </div>`;
-
-    progressContent.innerHTML = html;
-}
     // Update reminder display
     function updateReminderDisplay() {
         if (!currentSubject) {
@@ -911,7 +933,10 @@ function updateProgressDisplay() {
             return;
         }
 
-        const subjectName = currentSubject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học';
+        const subjectName = 
+            currentSubject === 'toan-hoc' ? 'Toán Học' : 
+            currentSubject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học';
+        
         let html = `<div class="reminder-item">
             <div class="reminder-topic">Môn học: ${subjectName}</div>
         </div>`;
@@ -944,9 +969,7 @@ function updateProgressDisplay() {
             
             // Hiển thị thông báo
             setTimeout(() => {
-                const reminderMessage = userRole === 'giáo viên' ? 
-                    `Thầy/cô ơi, thầy đã phân tích điểm yếu và gợi ý bài tập cho tuần này. Nhấn vào biểu tượng chuông để xem nhé!` :
-                    `Em ơi, thầy đã phân tích điểm yếu và gợi ý bài tập cho tuần này. Nhấn vào biểu tượng chuông để xem nhé!`;
+                const reminderMessage = `Bạn ơi, mình đã phân tích điểm yếu và gợi ý bài tập cho tuần này. Nhấn vào biểu tượng chuông để xem nhé!`;
                 
                 themTinNhanVaoGiaoDien("bot", reminderMessage);
                 addToChatHistory("bot", reminderMessage, currentSubject);
@@ -958,12 +981,14 @@ function updateProgressDisplay() {
     async function generateWeeklyReminders() {
         if (!currentSubject) return;
 
-        const subjectName = currentSubject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học';
+        const subjectName = 
+            currentSubject === 'toan-hoc' ? 'Toán Học' : 
+            currentSubject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học';
         
         // Tạo prompt cho AI để phân tích điểm yếu và gợi ý bài tập
-        const prompt = `Bạn là giáo viên ${subjectName} THPT. Dựa trên các bài tập mà học sinh đã gặp khó khăn, hãy:
+        const prompt = `Bạn là một học sinh giỏi ${subjectName} THPT. Dựa trên các bài tập mà bạn học đã gặp khó khăn, hãy:
         
-1. Xác định 3 chủ đề mà học sinh cần ôn tập nhiều nhất
+1. Xác định 3 chủ đề mà bạn học cần ôn tập nhiều nhất
 2. Gợi ý 2 bài tập cho mỗi chủ đề để luyện tập trong tuần này
 
 Dữ liệu bài tập đã làm:
@@ -976,6 +1001,7 @@ Yêu cầu:
 - Chỉ đưa ra đề bài, không giải
 - Bài tập phù hợp với trình độ THPT
 - Sắp xếp theo mức độ từ dễ đến khó
+- Xưng hô: mình (cho bot) và bạn (cho người dùng)
 
 Kết quả phân tích:
 1. Chủ đề 1: 
@@ -1150,6 +1176,11 @@ Kết quả phân tích:
             userProgress = JSON.parse(savedProgress);
         } else {
             userProgress = {
+                'toan-hoc': { 
+                    totalExercises: 0, 
+                    completedExercises: 0,
+                    topics: {} 
+                },
                 'vat-ly': { 
                     totalExercises: 0, 
                     completedExercises: 0,
@@ -1171,6 +1202,7 @@ Kết quả phân tích:
             weaknessAreas = JSON.parse(savedWeakness);
         } else {
             weaknessAreas = {
+                'toan-hoc': {},
                 'vat-ly': {},
                 'hoa-hoc': {}
             };
@@ -1199,64 +1231,66 @@ Kết quả phân tích:
     function saveLastReminderDate() {
         localStorage.setItem('lastReminderDate', lastReminderDate);
     }
-function updateUserProgress(topic, isCompleted) {
-    if (!currentSubject) return;
-    
-    // Initialize subject progress if not exists
-    if (!userProgress[currentSubject]) {
-        userProgress[currentSubject] = { 
-            totalExercises: 0, 
-            completedExercises: 0,
-            topics: {},
-            lastProblem: null
-        };
-    }
-    
-    // Initialize topic if not exists
-    if (!userProgress[currentSubject].topics[topic]) {
-        userProgress[currentSubject].topics[topic] = {
-            total: 0,
-            completed: 0,
-            mistakes: 0
-        };
-    }
-    
-    // Get topic stats
-    const topicStats = userProgress[currentSubject].topics[topic];
-    
-    // Only update total if this is a new problem (not an answer attempt)
-    if (isCompleted === undefined) {
-        // Chỉ cập nhật nếu đây là bài toán mới (khác bài toán trước đó)
-        if (userProgress[currentSubject].lastProblem !== currentProblem.question) {
-            userProgress[currentSubject].totalExercises += 1;
-            topicStats.total += 1;
-            userProgress[currentSubject].lastProblem = currentProblem.question;
-        }
-    }
-    // Update completed count if answer is correct và chưa được tính trước đó
-    else if (isCompleted === true) {
-        if (!currentProblem.countedAsCompleted) {
-            userProgress[currentSubject].completedExercises += 1;
-            topicStats.completed += 1;
-            currentProblem.countedAsCompleted = true; // Đánh dấu đã được tính
-        }
-    }
-    // Update mistakes count if answer is wrong
-    else if (isCompleted === false) {
-        topicStats.mistakes += 1;
+
+    function updateUserProgress(topic, isCompleted) {
+        if (!currentSubject) return;
         
-        // If mistake rate is high, add to weakness areas
-        const mistakeRate = topicStats.mistakes / topicStats.total;
-        if (mistakeRate > 0.5 && !weaknessAreas[currentSubject][topic]) {
-            weaknessAreas[currentSubject][topic] = [];
-            saveWeaknessAreas();
+        // Initialize subject progress if not exists
+        if (!userProgress[currentSubject]) {
+            userProgress[currentSubject] = { 
+                totalExercises: 0, 
+                completedExercises: 0,
+                topics: {},
+                lastProblem: null
+            };
         }
+        
+        // Initialize topic if not exists
+        if (!userProgress[currentSubject].topics[topic]) {
+            userProgress[currentSubject].topics[topic] = {
+                total: 0,
+                completed: 0,
+                mistakes: 0
+            };
+        }
+        
+        // Get topic stats
+        const topicStats = userProgress[currentSubject].topics[topic];
+        
+        // Only update total if this is a new problem (not an answer attempt)
+        if (isCompleted === undefined) {
+            // Chỉ cập nhật nếu đây là bài toán mới (khác bài toán trước đó)
+            if (userProgress[currentSubject].lastProblem !== currentProblem.question) {
+                userProgress[currentSubject].totalExercises += 1;
+                topicStats.total += 1;
+                userProgress[currentSubject].lastProblem = currentProblem.question;
+            }
+        }
+        // Update completed count if answer is correct và chưa được tính trước đó
+        else if (isCompleted === true) {
+            if (!currentProblem.countedAsCompleted) {
+                userProgress[currentSubject].completedExercises += 1;
+                topicStats.completed += 1;
+                currentProblem.countedAsCompleted = true; // Đánh dấu đã được tính
+            }
+        }
+        // Update mistakes count if answer is wrong
+        else if (isCompleted === false) {
+            topicStats.mistakes += 1;
+            
+            // If mistake rate is high, add to weakness areas
+            const mistakeRate = topicStats.mistakes / topicStats.total;
+            if (mistakeRate > 0.5 && !weaknessAreas[currentSubject][topic]) {
+                weaknessAreas[currentSubject][topic] = [];
+                saveWeaknessAreas();
+            }
+        }
+        
+        // Save updated progress
+        saveUserProgress();
+        updateProgressDisplay();
     }
-    
-    // Save updated progress
-    saveUserProgress();
-    updateProgressDisplay();
-}
+
     // Load chat history for a specific subject
     function loadSubjectChatHistory(subject) {
         // Clear current chat
@@ -1282,53 +1316,58 @@ function updateUserProgress(topic, isCompleted) {
 
         // If no messages, show welcome
         if (subjectMessages.length === 0) {
-            const welcomeMessage = userRole === 'giáo viên' ? 
-                `Kính chào thầy/cô! Thầy là trợ lý học tập môn ${subject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học'}. Thầy có thể hỗ trợ thầy/cô trong việc giảng dạy.` :
-                `Chào em! Thầy là trợ lý học tập môn ${subject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học'}. Thầy có thể giúp em học tập bằng cách gợi mở tư duy. Em có câu hỏi gì về môn học này không?`;
+            const subjectName = 
+                subject === 'toan-hoc' ? 'Toán Học' : 
+                subject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học';
+            
+            const welcomeMessage = `Chào bạn! Mình là trợ lý học tập môn ${subjectName}. Mình có thể giúp bạn học tập bằng cách gợi mở tư duy. Bạn có câu hỏi gì về môn học này không?`;
             
             themTinNhanVaoGiaoDien("bot", welcomeMessage);
             addToChatHistory("bot", welcomeMessage, subject);
         }
     }
-
-    // Generate AI prompt for analysis
-    function generateAnalysisPrompt(question, subject, history) {
-        const subjectName = subject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học';
-        const userTitle = userRole === 'giáo viên' ? 'thầy/cô' : 'em';
-        
-        // Create context from chat history
-        let context = "Lịch sử trò chuyện gần đây:\n";
-        if (history && history.length > 0) {
-            context += history.slice(-3).map(msg => 
-                `${msg.sender === 'nguoi-dung' ? 'Người dùng' : 'Bot'}: ${msg.message}`
-            ).join('\n');
-        } else {
-            context += "Chưa có lịch sử trò chuyện";
-        }
-        
-        return `Bạn là giáo viên ${subjectName} THPT. Hãy phân tích câu hỏi sau theo yêu cầu:
+function generateAnalysisPrompt(question, subject, history) {
+    const subjectName = 
+        subject === 'toan-hoc' ? 'Toán Học' : 
+        subject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học';
+    
+    // Create context from chat history
+    let context = "Lịch sử trò chuyện gần đây:\n";
+    if (history && history.length > 0) {
+        context += history.slice(-3).map(msg => 
+            `${msg.sender === 'nguoi-dung' ? 'Người dùng' : 'Bot'}: ${msg.message}`
+        ).join('\n');
+    } else {
+        context += "Chưa có lịch sử trò chuyện";
+    }
+    
+    return `Bạn là một học sinh giỏi ${subjectName} THPT. Hãy phân tích câu hỏi sau theo yêu cầu:
 
 QUY TẮC BẮT BUỘC:
 1. KHÔNG sử dụng ký tự * trong bất kỳ trường hợp nào
 2. KHÔNG được đưa ra đáp án cuối cùng
 3. KHÔNG tự động giải bài hoàn chỉnh
-4. Chỉ ở vai trò gợi mở tư duy học sinh
-5. Xưng hô: Thầy (cho bot) và em (cho học sinh) hoặc thầy/cô (cho giáo viên)
+4. Chỉ ở vai trò gợi mở tư duy
+5. Xưng hô: mình (cho bot) và bạn (cho người dùng)
+6. PHẢI tuân thủ chính xác cấu trúc trả lời dưới đây
+7. Nếu không tuân thủ cấu trúc, câu trả lời sẽ bị coi là không hợp lệ
 
-1. Chủ đề: (Chỉ ghi tên chủ đề chính)
-2. Kiến thức liên quan:
+1. Tóm tắt đề bài: (BẮT BUỘC dùng ký hiệu, ví dụ: r=0.5m, S=?cm², n=0.1mol)
+2. Chủ đề: (Chỉ ghi tên chủ đề chính)
+3. Kiến thức liên quan:
 - Khái niệm: (Dùng từ ngữ đơn giản, dễ hiểu)
 - Công thức: (Viết đơn giản bằng chữ, ví dụ: "vận tốc bằng quãng đường chia thời gian")
-3. Câu hỏi định hướng: (3-5 câu hỏi giúp ${userTitle} tự nghĩ)
-4. Bài tập tương tự: (2 bài, chỉ đề bài)
+4. Câu hỏi định hướng: (3-5 câu hỏi giúp bạn tự nghĩ)
+5. Bài tập tương tự: (2 bài, chỉ đề bài)
 
 YÊU CẦU:
 - Tuyệt đối không giải bài
 - Không đưa ra đáp án cuối cùng
 - Chỉ gợi mở hướng giải quyết
-- Dùng từ ngữ đơn giản, gần gũi với ${userTitle}
+- Dùng từ ngữ đơn giản, gần gũi
 - Công thức viết bằng chữ, không dùng ký hiệu toán học
 - KHÔNG dùng dấu * để thay thế cho phép nhân
+- PHẢI điền đầy đủ các mục 1-5 ở trên
 
 Lịch sử chat:
 ${context}
@@ -1336,23 +1375,25 @@ ${context}
 Câu hỏi hiện tại: ${question}
 
 Phân tích:
-1. Chủ đề: 
-2. Kiến thức liên quan:
+1. Tóm tắt đề bài: 
+2. Chủ đề: 
+3. Kiến thức liên quan:
 - Khái niệm: 
 - Công thức: 
-3. Câu hỏi định hướng:
+4. Câu hỏi định hướng:
 - 
 - 
 - 
-4. Bài tập tương tự:
+5. Bài tập tương tự:
 - 
 - `;
-    }
+}
 
     // Generate AI prompt for solution guidance
     function generateSolutionGuidancePrompt(question, subject, history, analysis) {
-        const subjectName = subject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học';
-        const userTitle = userRole === 'giáo viên' ? 'thầy/cô' : 'em';
+        const subjectName = 
+            subject === 'toan-hoc' ? 'Toán Học' : 
+            subject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học';
         
         // Create context from chat history
         let context = "Lịch sử trò chuyện gần đây:\n";
@@ -1364,18 +1405,18 @@ Phân tích:
             context += "Chưa có lịch sử trò chuyện";
         }
         
-        return `Bạn là giáo viên ${subjectName} THPT. Hãy HƯỚNG DẪN CÁCH TIẾP CẬN bài tập sau theo yêu cầu:
+        return `Bạn là một học sinh giỏi ${subjectName} THPT. Hãy HƯỚNG DẪN CÁCH TIẾP CẬN bài tập sau theo yêu cầu:
 
 QUY TẮC BẮT BUỘC:
 1. KHÔNG sử dụng ký tự * trong bất kỳ trường hợp nào
 2. KHÔNG được đưa ra đáp án cuối cùng
 3. KHÔNG tự động giải bài hoàn chỉnh
-4. Chỉ ở vai trò gợi mở tư duy học sinh
-5. Xưng hô: Thầy (cho bot) và em (cho học sinh) hoặc thầy/cô (cho giáo viên)
+4. Chỉ ở vai trò gợi mở tư duy
+5. Xưng hô: mình (cho bot) và bạn (cho người dùng)
 
 Yêu cầu:
 1. Hướng dẫn từng bước tiếp cận bài toán
-2. Giải thích cách suy nghĩ cho ${userTitle}
+2. Giải thích cách suy nghĩ
 3. Công thức viết bằng chữ, không dùng ký hiệu toán học
 4. KHÔNG đưa ra lời giải hoàn chỉnh
 5. KHÔNG đưa ra bài tập tương tự
@@ -1391,8 +1432,9 @@ Hướng dẫn tiếp cận:
 
     // Generate AI prompt for general response
     function generateGeneralPrompt(question, subject, history) {
-        const subjectName = subject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học';
-        const userTitle = userRole === 'giáo viên' ? 'thầy/cô' : 'em';
+        const subjectName = 
+            subject === 'toan-hoc' ? 'Toán Học' : 
+            subject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học';
         
         // Create context from chat history
         let context = "Lịch sử trò chuyện gần đây:\n";
@@ -1404,18 +1446,18 @@ Hướng dẫn tiếp cận:
             context += "Chưa có lịch sử trò chuyện";
         }
         
-        return `Bạn là giáo viên ${subjectName} THPT. Hãy trả lời câu hỏi sau một cách ngắn gọn, dễ hiểu:
+        return `Bạn là một học sinh giỏi ${subjectName} THPT. Hãy trả lời câu hỏi sau một cách ngắn gọn, dễ hiểu:
 
 QUY TẮC BẮT BUỘC:
 1. KHÔNG sử dụng ký tự * trong bất kỳ trường hợp nào
-2. Xưng hô: Thầy (cho bot) và em (cho học sinh) hoặc thầy/cô (cho giáo viên)
+2. Xưng hô: mình (cho bot) và bạn (cho người dùng)
 3. KHÔNG đưa ra lời giải hoàn chỉnh cho bài tập
 4. Chỉ gợi mở hướng giải quyết
 
 Yêu cầu:
 - Trả lời trực tiếp vào câu hỏi
 - Giải thích ngắn gọn, rõ ràng
-- Dùng từ ngữ đơn giản, gần gũi với ${userTitle}
+- Dùng từ ngữ đơn giản, gần gũi
 - Nếu là câu hỏi yêu cầu giải bài, hãy hướng dẫn cách tiếp cận chứ không giải chi tiết
 
 Lịch sử chat:
@@ -1428,10 +1470,11 @@ Trả lời:`;
 
     // Generate prompt for similar exercises
     function generateSimilarExercisesPrompt(question, subject, guidance) {
-        const subjectName = subject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học';
-        const userTitle = userRole === 'giáo viên' ? 'thầy/cô' : 'em';
+        const subjectName = 
+            subject === 'toan-hoc' ? 'Toán Học' : 
+            subject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học';
         
-        return `Bạn là giáo viên ${subjectName} THPT. Vừa rồi ${userTitle} đã phân tích bài tập sau:
+        return `Bạn là một học sinh giỏi ${subjectName} THPT. Vừa rồi bạn đã phân tích bài tập sau:
         
 Bài tập gốc:
 ${question}
@@ -1439,7 +1482,7 @@ ${question}
 Hướng dẫn tiếp cận:
 ${guidance}
 
-Hãy tạo 2 bài tập tương tự cùng chủ đề và cùng mức độ khó để ${userTitle} có thể luyện tập thêm. Chỉ đưa ra đề bài, không cần giải.
+Hãy tạo 2 bài tập tương tự cùng chủ đề và cùng mức độ khó để bạn có thể luyện tập thêm. Chỉ đưa ra đề bài, không cần giải.
 
 QUY TẮC:
 1. KHÔNG sử dụng ký tự *
@@ -1453,19 +1496,20 @@ Bài tập tương tự:
 
     // Generate prompt for review suggestion
     function generateReviewSuggestionPrompt(topic, subject, mistakes) {
-        const subjectName = subject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học';
-        const userTitle = userRole === 'giáo viên' ? 'thầy/cô' : 'em';
+        const subjectName = 
+            subject === 'toan-hoc' ? 'Toán Học' : 
+            subject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học';
         
-        return `Bạn là giáo viên ${subjectName} THPT. ${userTitle} đang gặp khó khăn với chủ đề ${topic} (đã mắc ${mistakes} lỗi). Hãy:
+        return `Bạn là một học sinh giỏi ${subjectName} THPT. Bạn đang gặp khó khăn với chủ đề ${topic} (đã mắc ${mistakes} lỗi). Hãy:
         
 1. Giải thích ngắn gọn những điểm quan trọng cần nhớ về chủ đề này
-2. Gợi ý 1-2 bài tập đơn giản để ${userTitle} có thể luyện tập lại
+2. Gợi ý 1-2 bài tập đơn giản để bạn có thể luyện tập lại
 
 YÊU CẦU:
 1. KHÔNG sử dụng ký tự *
 2. Giải thích bằng ngôn ngữ đơn giản, dễ hiểu
 3. Chỉ đưa ra đề bài, không giải chi tiết
-4. Xưng hô: Thầy (cho bot) và em (cho học sinh) hoặc thầy/cô (cho giáo viên)
+4. Xưng hô: mình (cho bot) và bạn (cho người dùng)
 
 Gợi ý ôn tập:
 1. Kiến thức quan trọng:
@@ -1476,6 +1520,7 @@ Gợi ý ôn tập:
 - 
 - `;
     }
+
 async function checkStudentAnswer(studentAnswer) {
     try {
         if (!currentProblem || !currentProblem.question) {
@@ -1484,13 +1529,13 @@ async function checkStudentAnswer(studentAnswer) {
 
         loadingIndicator.style.display = 'block';
         
-        const prompt = `Bạn là giáo viên ${currentSubject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học'} THPT. 
-Hãy kiểm tra đáp án sau đây của học sinh với bài toán sau:
+        const prompt = `Bạn là một học sinh giỏi ${currentSubject === 'toan-hoc' ? 'Toán Học' : currentSubject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học'} THPT. 
+Hãy kiểm tra đáp án sau đây của bạn học với bài toán sau:
 
 Bài toán:
 ${currentProblem.question}
 
-Đáp án học sinh đưa ra:
+Đáp án bạn học đưa ra:
 ${studentAnswer}
 
 Hãy phân tích và trả lời theo cấu trúc sau:
@@ -1500,7 +1545,7 @@ Hãy phân tích và trả lời theo cấu trúc sau:
 
 Yêu cầu:
 - Phản hồi phải bắt đầu bằng [KẾT_QUẢ]
-- Xưng hô thầy - em
+- Xưng hô mình - bạn
 - Giải thích rõ ràng, thân thiện
 - Không dùng ký tự *`;
 
@@ -1523,15 +1568,16 @@ Yêu cầu:
         const giaiThich = giaiThichMatch[1].trim();
         const baiTapTuongTu = baiTapMatch ? baiTapMatch[1].trim() : null;
 
-        // Xác định chủ đề
-        const topicMatch = currentProblem.analysis.match(/1\. Chủ đề:\s*(.+)/);
+        // Xác định chủ đề từ phân tích trước đó
+        const topicMatch = currentProblem.analysis.match(/2\. Chủ đề:\s*(.+)/);
         const topic = topicMatch && topicMatch[1] ? topicMatch[1].trim() : 'Không xác định';
         
+        // Tạo phản hồi theo đúng định dạng
         if (isCorrect) {
             let response = `<div class="exercise-suggestion">
                 <div class="exercise-suggestion-title"><i class="fas fa-check-circle"></i> Chính xác!</div>
                 ${giaiThich.replace(/\n/g, '<br>')}`;
-                
+            
             if (baiTapTuongTu) {
                 response += `<div class="similar-exercise">
                     <div class="similar-exercise-title"><i class="fas fa-lightbulb"></i> Bài tập tương tự</div>
@@ -1552,11 +1598,11 @@ Yêu cầu:
             let response = `<div class="question-box">
                 <div class="question-box-title"><i class="fas fa-exclamation-circle"></i> Đáp án chưa chính xác</div>
                 ${giaiThich.replace(/\n/g, '<br>')}<br><br>
-                <strong>Em hãy:</strong><br>
+                <strong>Bạn hãy:</strong><br>
                 - Xem lại các bước làm<br>
                 - Kiểm tra công thức và tính toán<br>
                 - Gửi lại đáp án sau khi đã điều chỉnh<br><br>
-                Thầy tin em sẽ làm được!
+                Mình tin bạn sẽ làm được!
             </div>`;
             
             themTinNhanVaoGiaoDien("bot", response);
@@ -1570,106 +1616,110 @@ Yêu cầu:
         loadingIndicator.style.display = 'none';
         const response = `<div class="question-box">
             <div class="question-box-title"><i class="fas fa-times-circle"></i> Lỗi hệ thống</div>
-            Thầy chưa thể kiểm tra đáp án ngay bây giờ.<br>
-            Em vui lòng:<br>
+            Mình chưa thể kiểm tra đáp án ngay bây giờ.<br>
+            Bạn vui lòng:<br>
             1. Kiểm tra lại cách giải<br>
             2. Thử lại sau ít phút<br>
-            Xin lỗi em vì sự bất tiện này!
+            Xin lỗi bạn vì sự bất tiện này!
         </div>`;
         themTinNhanVaoGiaoDien("bot", response);
         addToChatHistory("bot", response, currentSubject);
     }
 }
+
     // Helper function to check if user is asking for solution
     function isAskingForSolution(message) {
         return solutionRequestPhrases.test(message.toLowerCase());
     }
 
-    // Check if the message contains a homework problem
     function isHomeworkProblem(message) {
-        if (!message) return false;
-        
-        // Check if it's a complete exercise (contains question and data)
-        const isCompleteExercise = /(bài|bài tập|câu|hỏi)\s*\d+[:.]?\s*.+[\n\r].+[\n\r].+/i.test(message);
-        
-        // Check for numbers and question marks (likely a problem)
-        const hasNumbersAndQuestion = /\d/.test(message) && /\?/.test(message);
-        
-        // Check for multi-line input (likely a problem)
-        const hasMultipleLines = message.split('\n').length > 2;
-        
-        // Check for uploaded file (likely a problem)
-        const hasUploadedFile = uploadedFile !== null;
-        
-        return isCompleteExercise || hasNumbersAndQuestion || hasMultipleLines || hasUploadedFile;
-    }
-
-    // Select subject
-    function selectSubject(subject) {
-        currentSubject = subject;
-        subjectScreen.style.display = 'none';
-        chatbotContainer.style.display = 'flex';
-        
-        // Ask for user role if not set
-        if (!userRole) {
-            const roleMessage = `Xin chào! Bạn là giáo viên hay học sinh? (Nhập "giáo viên" hoặc "học sinh")`;
-            themTinNhanVaoGiaoDien("bot", roleMessage);
-            addToChatHistory("bot", roleMessage, subject);
-        } else {
-            // Load chat history for this subject
-            loadSubjectChatHistory(subject);
-        }
-    }
+    if (!message) return false;
+    
+    // Check for common problem indicators
+    const problemIndicators = [
+        "tính", "xác định", "cho biết", "bài toán", "tìm", 
+        "vận tốc", "khối lượng", "nồng độ", "phản ứng", 
+        "điện tích", "lực", "gia tốc", "nhiệt độ", "áp suất",
+        "bài tập", "giải bài", "làm bài"
+    ];
+    
+    // Check for math/physics/chemistry specific terms
+    const subjectTerms = {
+        'toan-hoc': ["toán", "phương trình", "hàm số", "đạo hàm", "tích phân", "hình học"],
+        'vat-ly': ["vật lý", "chuyển động", "điện", "từ trường", "quang học", "nhiệt"],
+        'hoa-hoc': ["hóa học", "phản ứng", "chất", "nguyên tử", "phân tử", "mol"]
+    };
+    
+    // Check for numbers in the message (likely a problem)
+    const hasNumbers = /\d/.test(message);
+    
+    // Check if the message contains problem indicators
+    const hasProblemIndicators = problemIndicators.some(indicator => 
+        message.toLowerCase().includes(indicator)
+    );
+    
+    // Check for subject-specific terms
+    const hasSubjectTerms = currentSubject && subjectTerms[currentSubject] ? 
+        subjectTerms[currentSubject].some(term => message.toLowerCase().includes(term)) : 
+        false;
+    
+    // Consider it a homework problem if it has either:
+    // 1. Numbers and problem indicators
+    // 2. Subject terms and problem indicators
+    // 3. Explicit request for solution
+    return (hasNumbers && hasProblemIndicators) || 
+           (hasSubjectTerms && hasProblemIndicators) ||
+           solutionRequestPhrases.test(message.toLowerCase());
+}
 function processAnalysisResponse(response, originalQuestion) {
-    // Kiểm tra xem response có phải là phân tích không
-    const isAnalysis = response.includes("Chủ đề:") || 
-                      response.includes("Kiến thức liên quan:") || 
-                      response.includes("Câu hỏi định hướng:");
+    // LUÔN tạo currentProblem mới nếu là bài toán mới
+    if (!currentProblem || currentProblem.question !== originalQuestion) {
+        currentProblem = {
+            question: originalQuestion,
+            analysis: response,
+            solved: false,
+            countedAsCompleted: false
+        };
+        
+        // LUÔN cập nhật tiến độ khi phân tích bài mới
+        const topicMatch = response.match(/2\. Chủ đề:\s*(.+)/);
+        const topic = topicMatch && topicMatch[1] ? topicMatch[1].trim() : 'Không xác định';
+        updateUserProgress(topic);
+    }
     
-    if (isAnalysis) {
-        try {
-            // Nếu là phân tích thì lưu và hiển thị
-            currentProblem = {
-                question: originalQuestion,
-                analysis: response,
-                solved: false,
-                countedAsCompleted: false // Thêm trường này để theo dõi
-            };
-            
-            // Sửa regex để xử lý cả 2 định dạng số thứ tự
-            let formattedResponse = response
-                .replace(/\*/g, '')
-                // Xử lý cả 2 định dạng: "1. Chủ đề:" và "Chủ đề:"
-                .replace(/(\d+\.\s*)?Chủ đề:\s*(.+)/g, '<strong>1. Chủ đề:</strong> $2')
-                .replace(/(\d+\.\s*)?Kiến thức liên quan:\s*/g, '<strong>2. Kiến thức liên quan:</strong>')
-                .replace(/- Khái niệm:\s*(.+)/g, '<div class="formula">- Khái niệm: $1</div>')
-                .replace(/- Công thức:\s*(.+)/g, '<div class="formula">- Công thức: $1</div>')
-                .replace(/(\d+\.\s*)?Câu hỏi định hướng:\s*/g, '<strong>3. Câu hỏi định hướng:</strong>')
-                .replace(/(\d+\.\s*)?Bài tập tương tự:\s*/g, '<strong>4. Bài tập tương tự:</strong>')
-                .replace(/\n/g, '<br>');
-            
-            // Thêm regex để xóa các số thứ tự thừa trong nội dung
-            formattedResponse = formattedResponse.replace(/(<br>|\n)\d+\.\s*/g, '$1- ');
-            
-            const topicMatch = response.match(/(1\. )?Chủ đề:\s*(.+)|Chủ đề:\s*(.+)/);
-            const topic = (topicMatch && topicMatch[2]) ? topicMatch[2].trim() : 
-                         (topicMatch && topicMatch[3]) ? topicMatch[3].trim() : 'Không xác định';
-            
-            updateUserProgress(topic);
-            
-            return `<div class="knowledge-box">
-                <div class="knowledge-box-title"><i class="fas fa-lightbulb"></i> Phân tích bài toán</div>
-                ${formattedResponse}
+    // LUÔN bọc trong khung kiến thức với cấu trúc thống nhất
+    let formattedResponse = response.replace(/\*/g, '');
+    
+    // Tách phần tóm tắt đề bài nếu có
+    let summaryPart = "";
+    const summaryMatch = response.match(/1\. Tóm tắt đề bài:\s*([\s\S]*?)(2\. Chủ đề:|$)/i);
+    if (summaryMatch && summaryMatch[1]) {
+        const summaryContent = summaryMatch[1].trim();
+        if (summaryContent && !summaryContent.includes("Chủ đề")) {
+            summaryPart = `<div class="problem-summary">
+                <div class="summary-title"><i class="fas fa-list-alt"></i> Tóm tắt đề bài</div>
+                ${summaryContent.replace(/\n/g, '<br>')}
             </div>`;
-        } catch (error) {
-            console.error("Lỗi khi xử lý phân tích:", error);
-            return response.replace(/\*/g, ''); // Trả về response gốc nếu có lỗi
         }
     }
     
-    // Nếu không phải phân tích thì trả về response bình thường
-    currentProblem = null;
-    return response.replace(/\*/g, '');
+    // Format lại response với cấu trúc thống nhất
+    formattedResponse = formattedResponse
+        .replace(/1\. Tóm tắt đề bài:\s*/g, '')
+        .replace(/2\. Chủ đề:\s*/g, '<strong>2. Chủ đề:</strong> ')
+        .replace(/3\. Kiến thức liên quan:\s*/g, '<strong>3. Kiến thức liên quan:</strong>')
+        .replace(/- Khái niệm:\s*(.+)/g, '<div class="formula">- Khái niệm: $1</div>')
+        .replace(/- Công thức:\s*(.+)/g, '<div class="formula">- Công thức: $1</div>')
+        .replace(/4\. Câu hỏi định hướng:\s*/g, '<strong>4. Câu hỏi định hướng:</strong>')
+        .replace(/5\. Bài tập tương tự:\s*/g, '<strong>5. Bài tập tương tự:</strong>')
+        .replace(/\n/g, '<br>')
+        .replace(/(<br>|\n)\d+\.\s*/g, '$1- ');
+    
+    // Bọc trong khung kiến thức màu xanh với cấu trúc cố định
+    return `${summaryPart}<div class="knowledge-box">
+        <div class="knowledge-box-title"><i class="fas fa-lightbulb"></i> Phân tích bài toán</div>
+        ${formattedResponse}
+    </div>`;
 }
     // Process AI response for solution guidance
     async function processSolutionGuidanceResponse(response, originalQuestion, subject) {
@@ -1677,7 +1727,7 @@ function processAnalysisResponse(response, originalQuestion) {
         currentProblem.solved = true;
         
         // Extract topic from original analysis
-        const topicMatch = currentProblem.analysis.match(/1\. Chủ đề: (.+)/);
+        const topicMatch = currentProblem.analysis.match(/2\. Chủ đề: (.+)/);
         const topic = topicMatch && topicMatch[1] ? topicMatch[1].trim() : 'Không xác định';
         
         // Update progress (count as completed)
@@ -1727,17 +1777,10 @@ function processAnalysisResponse(response, originalQuestion) {
             }
         }
     }
- async function guiTinNhan() {
+
+    async function guiTinNhan() {
         const tinNhanNguoiDung = oNhapTinNhan.value.trim();
         if (!tinNhanNguoiDung && !uploadedFile) return;
-
-        // Check if user is setting their role
-        if (!userRole && (tinNhanNguoiDung.toLowerCase() === 'giáo viên' || tinNhanNguoiDung.toLowerCase() === 'học sinh')) {
-            userRole = tinNhanNguoiDung.toLowerCase() === 'giáo viên' ? 'giáo viên' : 'học sinh';
-            oNhapTinNhan.value = '';
-            loadSubjectChatHistory(currentSubject);
-            return;
-        }
 
         // Display user message
         if (uploadedFile) {
@@ -1760,9 +1803,11 @@ function processAnalysisResponse(response, originalQuestion) {
             if (loiChao.some(chao => tinNhanNguoiDung.toLowerCase().includes(chao))) {
                 setTimeout(() => {
                     loadingIndicator.style.display = 'none';
-                    const response = userRole === 'giáo viên' ? 
-                        `Kính chào thầy/cô! Thầy có thể hỗ trợ gì cho thầy/cô về môn ${currentSubject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học'} không ạ?` :
-                        `Chào em! Thầy có thể giúp gì cho em về môn ${currentSubject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học'} không?`;
+                    const subjectName = 
+                        currentSubject === 'toan-hoc' ? 'Toán Học' : 
+                        currentSubject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học';
+                    
+                    const response = `Chào bạn! Mình có thể giúp gì cho bạn về môn ${subjectName} không?`;
                     themTinNhanVaoGiaoDien("bot", response);
                     addToChatHistory("bot", response, currentSubject);
                 }, 1000);
@@ -1780,9 +1825,11 @@ function processAnalysisResponse(response, originalQuestion) {
             if (isAskingForHomework) {
                 setTimeout(() => {
                     loadingIndicator.style.display = 'none';
-                    const response = userRole === 'giáo viên' ? 
-                        `Thầy/cô muốn bài tập về chủ đề nào trong môn ${currentSubject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học'}?` :
-                        `Em muốn bài tập về chủ đề nào trong môn ${currentSubject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học'}?`;
+                    const subjectName = 
+                        currentSubject === 'toan-hoc' ? 'Toán Học' : 
+                        currentSubject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học';
+                    
+                    const response = `Bạn muốn bài tập về chủ đề nào trong môn ${subjectName}?`;
                     themTinNhanVaoGiaoDien("bot", response);
                     addToChatHistory("bot", response, currentSubject);
                 }, 1500);
@@ -1793,9 +1840,7 @@ function processAnalysisResponse(response, originalQuestion) {
             if (tinNhanNguoiDung && !laCauHoiTHPT(tinNhanNguoiDung)) {
                 setTimeout(() => {
                     loadingIndicator.style.display = 'none';
-                    const response = userRole === 'giáo viên' ?
-                        "Xin lỗi thầy/cô, thầy chỉ có thể giúp với các câu hỏi và bài tập ở cấp độ THPT." :
-                        "Xin lỗi em, thầy chỉ có thể giúp với các câu hỏi và bài tập ở cấp độ THPT.";
+                    const response = "Xin lỗi bạn, mình chỉ có thể giúp với các câu hỏi và bài tập ở cấp độ THPT.";
                     themTinNhanVaoGiaoDien("bot", response);
                     addToChatHistory("bot", response, currentSubject);
                 }, 1000);
@@ -1827,7 +1872,7 @@ function processAnalysisResponse(response, originalQuestion) {
                 addToChatHistory("bot", traLoiBot, currentSubject);
                 
                 // Check if we should suggest review
-                const topicMatch = currentProblem.analysis.match(/1\. Chủ đề: (.+)/);
+                const topicMatch = currentProblem.analysis.match(/2\. Chủ đề: (.+)/);
                 if (topicMatch && topicMatch[1]) {
                     const topic = topicMatch[1].trim();
                     checkForReviewSuggestion(topic);
@@ -1839,7 +1884,7 @@ function processAnalysisResponse(response, originalQuestion) {
             }
             
             // Check if the message is a homework problem (complete exercise)
-            const isHomeworkProblemValue = isHomeworkProblem(tinNhanNguoiDung);
+            const isHomeworkProblemValue = isHomeworkProblem(tinNhanNguoiDung) && !currentProblem;
             let prompt;
             
             if (isHomeworkProblemValue) {
@@ -1884,14 +1929,18 @@ function processAnalysisResponse(response, originalQuestion) {
         } catch (loi) {
             console.error("Lỗi khi xử lý câu hỏi: ", loi);
             loadingIndicator.style.display = 'none';
-            const response = userRole === 'giáo viên' ?
-                "Xin lỗi thầy/cô, thầy gặp lỗi khi xử lý yêu cầu. Vui lòng thử lại sau!" :
-                "Xin lỗi em, thầy gặp lỗi khi xử lý yêu cầu. Em vui lòng thử lại sau nhé!";
+            const response = `<div class="question-box">
+                <div class="question-box-title"><i class="fas fa-times-circle"></i> Lỗi hệ thống</div>
+                Mình chưa thể xử lý yêu cầu ngay bây giờ.<br>
+                Bạn vui lòng:<br>
+                1. Kiểm tra lại câu hỏi<br>
+                2. Thử lại sau ít phút<br>
+                Xin lỗi bạn vì sự bất tiện này!
+            </div>`;
             themTinNhanVaoGiaoDien("bot", response);
             addToChatHistory("bot", response, currentSubject);
         }
     }
-
 
     // Thêm hàm kiểm tra xem tin nhắn có phải là câu trả lời tiềm năng không
     function isPotentialAnswer(message) {
@@ -1916,6 +1965,16 @@ function processAnalysisResponse(response, originalQuestion) {
         
         const cauHoiThuong = cauHoi.toLowerCase();
         return !generalExcludeKeywords.some(tuKhoa => cauHoiThuong.includes(tuKhoa));
+    }
+
+    // Select subject
+    function selectSubject(subject) {
+        currentSubject = subject;
+        subjectScreen.style.display = 'none';
+        chatbotContainer.style.display = 'flex';
+        
+        // Load chat history for this subject
+        loadSubjectChatHistory(subject);
     }
 
     // Initialize the app
