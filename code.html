@@ -1520,7 +1520,6 @@ Gợi ý ôn tập:
 - 
 - `;
     }
-
 async function checkStudentAnswer(studentAnswer) {
     try {
         if (!currentProblem || !currentProblem.question) {
@@ -1540,13 +1539,13 @@ ${studentAnswer}
 
 Hãy phân tích và trả lời theo cấu trúc sau:
 [KẾT_QUẢ] // "ĐÚNG" hoặc "SAI"
-[GIẢI_THÍCH] // Giải thích chi tiết
-[BÀI_TẬP_TƯƠNG_TỰ] // (nếu đúng)
+[LỖI_SAI] // Chỉ ra lỗi sai cụ thể (nếu có)
+[GỢI_Ý] // Gợi ý cách làm lại (không đưa đáp án)
 
-Yêu cầu:
+YÊU CẦU:
 - Phản hồi phải bắt đầu bằng [KẾT_QUẢ]
 - Xưng hô mình - bạn
-- Giải thích rõ ràng, thân thiện
+- Chỉ chỉ ra lỗi sai và gợi ý, không đưa đáp án
 - Không dùng ký tự *`;
 
         const ketQua = await moHinh.generateContent(prompt);
@@ -1557,16 +1556,16 @@ Yêu cầu:
         
         // Xử lý phản hồi theo cấu trúc quy định
         const ketQuaMatch = traLoiBot.match(/\[KẾT_QUẢ\]\s*(ĐÚNG|SAI)/i);
-        const giaiThichMatch = traLoiBot.match(/\[GIẢI_THÍCH\]\s*([\s\S]*?)(\[BÀI_TẬP_TƯƠNG_TỰ\]|$)/i);
-        const baiTapMatch = traLoiBot.match(/\[BÀI_TẬP_TƯƠNG_TỰ\]\s*([\s\S]*)/i);
+        const loiSaiMatch = traLoiBot.match(/\[LỖI_SAI\]\s*([\s\S]*?)(\[GỢI_Ý\]|$)/i);
+        const goiYMatch = traLoiBot.match(/\[GỢI_Ý\]\s*([\s\S]*)/i);
         
-        if (!ketQuaMatch || !giaiThichMatch) {
+        if (!ketQuaMatch || !loiSaiMatch) {
             throw new Error("Phản hồi không đúng định dạng");
         }
 
         const isCorrect = ketQuaMatch[1].toUpperCase() === "ĐÚNG";
-        const giaiThich = giaiThichMatch[1].trim();
-        const baiTapTuongTu = baiTapMatch ? baiTapMatch[1].trim() : null;
+        const loiSai = loiSaiMatch[1].trim();
+        const goiY = goiYMatch ? goiYMatch[1].trim() : null;
 
         // Xác định chủ đề từ phân tích trước đó
         const topicMatch = currentProblem.analysis.match(/2\. Chủ đề:\s*(.+)/);
@@ -1576,12 +1575,12 @@ Yêu cầu:
         if (isCorrect) {
             let response = `<div class="exercise-suggestion">
                 <div class="exercise-suggestion-title"><i class="fas fa-check-circle"></i> Chính xác!</div>
-                ${giaiThich.replace(/\n/g, '<br>')}`;
+                ${loiSai.replace(/\n/g, '<br>')}`;
             
-            if (baiTapTuongTu) {
+            if (goiY) {
                 response += `<div class="similar-exercise">
-                    <div class="similar-exercise-title"><i class="fas fa-lightbulb"></i> Bài tập tương tự</div>
-                    ${baiTapTuongTu.replace(/\n/g, '<br>')}
+                    <div class="similar-exercise-title"><i class="fas fa-lightbulb"></i> Gợi ý bài tập nâng cao</div>
+                    ${goiY.replace(/\n/g, '<br>')}
                 </div>`;
             }
             
@@ -1597,12 +1596,11 @@ Yêu cầu:
         } else {
             let response = `<div class="question-box">
                 <div class="question-box-title"><i class="fas fa-exclamation-circle"></i> Đáp án chưa chính xác</div>
-                ${giaiThich.replace(/\n/g, '<br>')}<br><br>
-                <strong>Bạn hãy:</strong><br>
-                - Xem lại các bước làm<br>
-                - Kiểm tra công thức và tính toán<br>
-                - Gửi lại đáp án sau khi đã điều chỉnh<br><br>
-                Mình tin bạn sẽ làm được!
+                <strong>Lỗi sai:</strong><br>
+                ${loiSai.replace(/\n/g, '<br>')}<br><br>
+                <strong>Gợi ý làm lại:</strong><br>
+                ${goiY ? goiY.replace(/\n/g, '<br>') : 'Hãy xem lại các bước giải và công thức đã sử dụng'}<br><br>
+                Bạn hãy thử làm lại và gửi đáp án mới nhé!
             </div>`;
             
             themTinNhanVaoGiaoDien("bot", response);
@@ -1626,7 +1624,6 @@ Yêu cầu:
         addToChatHistory("bot", response, currentSubject);
     }
 }
-
     // Helper function to check if user is asking for solution
     function isAskingForSolution(message) {
         return solutionRequestPhrases.test(message.toLowerCase());
