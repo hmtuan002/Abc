@@ -656,6 +656,101 @@
                 right: auto;
             }
         }
+        .test-container {
+    border: 2px solid #3a7bd5;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 20px;
+    background-color: #f8f9fa;
+}
+
+.test-container div:first-child {
+    text-align: center;
+    font-weight: bold;
+    font-size: 1.2rem;
+    color: #3a7bd5;
+    margin-bottom: 15px;
+}
+
+.test-container div:nth-child(2) {
+    margin-bottom: 15px;
+    line-height: 1.6;
+}
+
+.test-container div:last-child {
+    font-style: italic;
+    color: #666;
+}
+
+.test-result {
+    border: 2px solid #4CAF50;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 20px;
+    background-color: #f8f9fa;
+}
+
+.test-result div:first-child {
+    text-align: center;
+    font-weight: bold;
+    font-size: 1.2rem;
+    color: #4CAF50;
+    margin-bottom: 15px;
+}
+
+.test-result div:nth-child(2) {
+    margin-bottom: 15px;
+    line-height: 1.6;
+}
+
+.correct-answer {
+    color: #4CAF50;
+    font-weight: bold;
+}
+
+.wrong-answer {
+    color: #F44336;
+    font-weight: bold;
+}
+
+.test-summary {
+    margin-top: 15px;
+    padding: 10px;
+    background-color: #e8f5e9;
+    border-radius: 8px;
+    font-weight: bold;
+}
+.test-result {
+    border: 2px solid #4CAF50;
+    border-radius: 10px;
+    padding: 15px;
+    margin: 15px 0;
+    background: #f8f9fa;
+}
+
+.test-header {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #3a7bd5;
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+.correct-answer {
+    color: #4CAF50;
+    margin: 5px 0;
+}
+
+.wrong-answer {
+    color: #F44336;
+    margin: 5px 0;
+}
+
+.hint {
+    color: #FF9800;
+    font-style: italic;
+    margin-left: 20px;
+}
     </style>
 </head>
 <body>
@@ -809,7 +904,9 @@
     let userProgress = {}; // Theo dõi tiến độ học tập
     let weaknessAreas = {}; // Theo dõi điểm yếu
     let lastReminderDate = null; // Ngày gửi nhắc nhở cuối cùng
-
+// Thêm vào phần khai báo biến toàn cục
+let currentTest = null; // Lưu bài kiểm tra hiện tại
+let isWaitingForTestAnswers = false; // Trạng thái đang chờ câu trả lời bài kiểm tra
     // General exclude keywords for high school level
     const generalExcludeKeywords = [
         "đại học", "cao học", "nghiên cứu", "phân tích chuyên sâu", "triết học",
@@ -1793,10 +1890,82 @@ function processAnalysisResponse(response, originalQuestion) {
             }
         }
     }
+async function guiTinNhan() {
+    const tinNhanNguoiDung = oNhapTinNhan.value.trim();
+    if (!tinNhanNguoiDung && !uploadedFile) return;
 
-    async function guiTinNhan() {
-        const tinNhanNguoiDung = oNhapTinNhan.value.trim();
-        if (!tinNhanNguoiDung && !uploadedFile) return;
+    // Hiển thị tin nhắn người dùng trước khi xử lý
+    if (!uploadedFile) {
+        themTinNhanVaoGiaoDien("nguoi-dung", tinNhanNguoiDung);
+        addToChatHistory("nguoi-dung", tinNhanNguoiDung, currentSubject);
+        oNhapTinNhan.value = '';
+        adjustTextareaHeight();
+    }
+
+    // Xử lý yêu cầu bài kiểm tra
+    if (tinNhanNguoiDung.toLowerCase().includes("bài kiểm tra")) {
+        // Tạo bài kiểm tra mới
+        const baiKiemTra = await generateTest(currentSubject, tinNhanNguoiDung);
+        if (baiKiemTra) {
+            // Lưu bài kiểm tra hiện tại
+            currentTest = baiKiemTra;
+            isWaitingForTestAnswers = true;
+            
+            // Hiển thị bài kiểm tra với định dạng đặc biệt
+            const formattedTest = `<div class="test-container" style="border: 2px solid #3a7bd5; border-radius: 10px; padding: 15px; margin-bottom: 20px; background-color: #f8f9fa;">
+                <div style="text-align: center; font-weight: bold; font-size: 1.2rem; color: #3a7bd5; margin-bottom: 15px;">
+                    BÀI KIỂM TRA ${currentSubject === 'toan-hoc' ? 'TOÁN HỌC' : currentSubject === 'vat-ly' ? 'VẬT LÝ' : 'HÓA HỌC'} - 10 CÂU TỰ LUẬN
+                </div>
+                <div style="margin-bottom: 15px;">
+                    ${baiKiemTra.replace(/\n/g, '<br>').replace(/\[.*?\]/g, '')}
+                </div>
+                <div style="font-style: italic; color: #666;">
+                    Gửi câu trả lời theo định dạng: 1. [đáp án 1], 2. [đáp án 2], ..., 10. [đáp án 10]
+                </div>
+            </div>`;
+            
+            themTinNhanVaoGiaoDien("bot", formattedTest);
+            addToChatHistory("bot", formattedTest, currentSubject);
+        } else {
+            const errorMsg = "Xin lỗi, mình chưa thể tạo bài kiểm tra ngay lúc này. Vui lòng thử lại sau!";
+            themTinNhanVaoGiaoDien("bot", errorMsg);
+            addToChatHistory("bot", errorMsg, currentSubject);
+        }
+        
+        loadingIndicator.style.display = 'none';
+        return;
+    }
+
+    // Xử lý khi đang chờ câu trả lời bài kiểm tra
+    if (isWaitingForTestAnswers && currentTest) {
+        const ketQuaChamBai = await gradeTest(currentTest, tinNhanNguoiDung);
+        
+        if (ketQuaChamBai) {
+            // Định dạng kết quả
+            const formattedResult = `
+                <div class="test-result">
+                    <div class="test-header">KẾT QUẢ CHẤM BÀI</div>
+                    <div style="margin: 10px 0; padding: 10px; background: #f5f5f5; border-radius: 8px;">
+                        ${ketQuaChamBai.replace(/\n/g, '<br>')}
+                    </div>
+                </div>
+            `;
+            
+            themTinNhanVaoGiaoDien("bot", formattedResult);
+            addToChatHistory("bot", formattedResult, currentSubject);
+            
+            currentTest = null;
+            isWaitingForTestAnswers = false;
+        } else {
+            // Xử lý lỗi chấm bài
+            const errorMsg = "Xin lỗi, mình chưa thể chấm bài...";
+            themTinNhanVaoGiaoDien("bot", errorMsg);
+            addToChatHistory("bot", errorMsg, currentSubject);
+        }
+        
+        loadingIndicator.style.display = 'none';
+        return;
+    }
 
         // Display user message
         if (uploadedFile) {
@@ -1995,6 +2164,95 @@ function processAnalysisResponse(response, originalQuestion) {
 
     // Initialize the app
     document.addEventListener('DOMContentLoaded', initApp);
+    // Hàm tạo bài kiểm tra 10 câu tự luận
+async function generateTest(subject, userMessage) {
+    try {
+        loadingIndicator.style.display = 'block';
+        
+        // Phân tích yêu cầu người dùng
+        const subjectName = subject === 'toan-hoc' ? 'Toán Học' : 
+                          subject === 'vat-ly' ? 'Vật Lý' : 'Hóa Học';
+        
+        // Mặc định
+        let topic = "nhiều chủ đề";
+        let difficulty = "trung bình";
+        
+        // Trích xuất chủ đề từ tin nhắn
+        const topicMatch = userMessage.match(/chủ đề (.+?)( mức|$)/i);
+        if (topicMatch) topic = topicMatch[1];
+        
+        // Trích xuất mức độ từ tin nhắn
+        const diffMatch = userMessage.match(/mức độ (dễ|trung bình|khó)/i);
+        if (diffMatch) difficulty = diffMatch[1].toLowerCase();
+        
+        const prompt = `Bạn là giáo viên ${subjectName} THPT. Hãy tạo bài kiểm tra 10 câu tự luận với:
+- Chủ đề: ${topic}
+- Mức độ: ${difficulty}
+- Mỗi câu có số thứ tự rõ ràng (1. ..., 2. ..., ...)
+- Chỉ đưa câu hỏi, không đáp án
+- Định dạng:
+
+[BÀI KIỂM TRA ${subjectName.toUpperCase()} - ${topic.toUpperCase()}]
+1. Câu hỏi 1...
+...
+10. Câu hỏi 10...
+
+[KẾT THÚC]`;
+
+        const ketQua = await moHinh.generateContent(prompt);
+        const phanHoi = await ketQua.response;
+        let baiKiemTra = phanHoi.text().trim();
+        
+        // Định dạng lại nếu cần
+        if (!baiKiemTra.includes("[BÀI KIỂM TRA")) {
+            baiKiemTra = `[BÀI KIỂM TRA ${subjectName.toUpperCase()} - ${topic.toUpperCase()}]\n${baiKiemTra}\n[KẾT THÚC]`;
+        }
+        
+        loadingIndicator.style.display = 'none';
+        return baiKiemTra;
+    } catch (error) {
+        console.error("Lỗi khi tạo bài kiểm tra:", error);
+        loadingIndicator.style.display = 'none';
+        return null;
+    }
+}
+async function gradeTest(testQuestions, studentAnswers) {
+    try {
+        loadingIndicator.style.display = 'block';
+        
+        const prompt = `Bạn là giáo viên THPT. Hãy:
+1. Chấm bài kiểm tra sau
+2. Chỉ dùng ký hiệu toán học cơ bản (+, -, ×, ÷)
+3. KHÔNG dùng ký hiệu LaTeX (như $...$)
+4. Đánh giá từng câu theo mẫu:
+
+Câu 1: [Đúng/Sai]
+- Gợi ý: [nếu sai]
+...
+Tổng điểm: X/10
+Nhận xét: [đánh giá chung]
+
+Bài kiểm tra:
+${testQuestions}
+
+Câu trả lời học sinh:
+${studentAnswers}`;
+
+        const ketQua = await moHinh.generateContent(prompt);
+        const phanHoi = await ketQua.response;
+        let ketQuaChamBai = phanHoi.text();
+        
+        // Loại bỏ các ký hiệu LaTeX
+        ketQuaChamBai = ketQuaChamBai.replace(/\$.+?\$/g, '');
+        
+        loadingIndicator.style.display = 'none';
+        return ketQuaChamBai;
+    } catch (error) {
+        console.error("Lỗi khi chấm bài:", error);
+        loadingIndicator.style.display = 'none';
+        return null;
+    }
+}
 </script>
 </body>
 </html>
