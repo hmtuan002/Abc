@@ -1520,7 +1520,7 @@ Gợi ý ôn tập:
 - 
 - `;
     }
-async function checkStudentAnswer(studentAnswer) {
+    async function checkStudentAnswer(studentAnswer) {
     try {
         if (!currentProblem || !currentProblem.question) {
             throw new Error("Không tìm thấy bài toán hiện tại");
@@ -1541,11 +1541,13 @@ Hãy phân tích và trả lời theo cấu trúc sau:
 [KẾT_QUẢ] // "ĐÚNG" hoặc "SAI"
 [LỖI_SAI] // Chỉ ra lỗi sai cụ thể (nếu có)
 [GỢI_Ý] // Gợi ý cách làm lại (không đưa đáp án)
+[BÀI_TẬP_TƯƠNG_TỰ] // 2 bài tập tương tự (chỉ đề bài)
 
 YÊU CẦU:
 - Phản hồi phải bắt đầu bằng [KẾT_QUẢ]
 - Xưng hô mình - bạn
-- Chỉ chỉ ra lỗi sai và gợi ý, không đưa đáp án
+- Khi đúng thì khen ngợi và đưa ra bài tập tương tự
+- Khi sai chỉ chỉ ra lỗi sai và gợi ý
 - Không dùng ký tự *`;
 
         const ketQua = await moHinh.generateContent(prompt);
@@ -1557,7 +1559,8 @@ YÊU CẦU:
         // Xử lý phản hồi theo cấu trúc quy định
         const ketQuaMatch = traLoiBot.match(/\[KẾT_QUẢ\]\s*(ĐÚNG|SAI)/i);
         const loiSaiMatch = traLoiBot.match(/\[LỖI_SAI\]\s*([\s\S]*?)(\[GỢI_Ý\]|$)/i);
-        const goiYMatch = traLoiBot.match(/\[GỢI_Ý\]\s*([\s\S]*)/i);
+        const goiYMatch = traLoiBot.match(/\[GỢI_Ý\]\s*([\s\S]*?)(\[BÀI_TẬP_TƯƠNG_TỰ\]|$)/i);
+        const baiTapMatch = traLoiBot.match(/\[BÀI_TẬP_TƯƠNG_TỰ\]\s*([\s\S]*)/i);
         
         if (!ketQuaMatch || !loiSaiMatch) {
             throw new Error("Phản hồi không đúng định dạng");
@@ -1566,6 +1569,7 @@ YÊU CẦU:
         const isCorrect = ketQuaMatch[1].toUpperCase() === "ĐÚNG";
         const loiSai = loiSaiMatch[1].trim();
         const goiY = goiYMatch ? goiYMatch[1].trim() : null;
+        const baiTapTuongTu = baiTapMatch ? baiTapMatch[1].trim() : null;
 
         // Xác định chủ đề từ phân tích trước đó
         const topicMatch = currentProblem.analysis.match(/2\. Chủ đề:\s*(.+)/);
@@ -1574,13 +1578,28 @@ YÊU CẦU:
         // Tạo phản hồi theo đúng định dạng
         if (isCorrect) {
             let response = `<div class="exercise-suggestion">
-                <div class="exercise-suggestion-title"><i class="fas fa-check-circle"></i> Chính xác!</div>
-                ${loiSai.replace(/\n/g, '<br>')}`;
+                <div class="exercise-suggestion-title"><i class="fas fa-check-circle"></i> Chính xác! Bạn làm rất tốt!</div>
+                <div style="margin: 10px 0; padding: 10px; background-color: #e8f5e9; border-radius: 8px;">
+                    <i class="fas fa-medal" style="color: #ffd700; margin-right: 5px;"></i>
+                    Mình rất ấn tượng với cách bạn giải quyết vấn đề này! Bạn đã áp dụng đúng phương pháp và tính toán chính xác.
+                </div>`;
             
-            if (goiY) {
+            if (loiSai) {
+                response += `<div style="margin: 10px 0; padding: 10px; background-color: #e3f2fd; border-radius: 8px;">
+                    ${loiSai.replace(/\n/g, '<br>')}
+                </div>`;
+            }
+            
+            if (baiTapTuongTu) {
+                const baiTaps = baiTapTuongTu.split('\n').filter(line => line.trim()).slice(0, 2);
                 response += `<div class="similar-exercise">
-                    <div class="similar-exercise-title"><i class="fas fa-lightbulb"></i> Gợi ý bài tập nâng cao</div>
-                    ${goiY.replace(/\n/g, '<br>')}
+                    <div class="similar-exercise-title"><i class="fas fa-lightbulb"></i> Bài tập tương tự để luyện tập thêm</div>
+                    <ol style="margin-left: 20px;">
+                        ${baiTaps.map(baiTap => `<li>${baiTap.trim()}</li>`).join('')}
+                    </ol>
+                    <div style="margin-top: 10px; font-style: italic;">
+                        Hãy thử sức với các bài tập này để củng cố kiến thức nhé!
+                    </div>
                 </div>`;
             }
             
