@@ -669,7 +669,7 @@
     font-weight: bold;
     font-size: 1.2rem;
     color: #3a7bd5;
-    margin-bottom: 15px;
+    margin-bottom: 13px;
 }
 
 .test-container div:nth-child(2) {
@@ -1968,14 +1968,8 @@ async function guiTinNhan() {
         return;
     }
 
-        // Display user message
-        if (uploadedFile) {
-            // File upload message is already handled in handleFileUpload function
-        } else {
-            themTinNhanVaoGiaoDien("nguoi-dung", tinNhanNguoiDung);
-            addToChatHistory("nguoi-dung", tinNhanNguoiDung, currentSubject);
-        }
-        
+       
+       
         oNhapTinNhan.value = '';
         adjustTextareaHeight();
 
