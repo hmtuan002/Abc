@@ -751,6 +751,7 @@
     font-style: italic;
     margin-left: 20px;
 }
+
     </style>
 </head>
 <body>
@@ -2164,8 +2165,7 @@ async function guiTinNhan() {
 
     // Initialize the app
     document.addEventListener('DOMContentLoaded', initApp);
-    // Hàm tạo bài kiểm tra 10 câu tự luận
-async function generateTest(subject, userMessage) {
+ async function generateTest(subject, userMessage) {
     try {
         loadingIndicator.style.display = 'block';
         
@@ -2190,6 +2190,7 @@ async function generateTest(subject, userMessage) {
 - Mức độ: ${difficulty}
 - Mỗi câu có số thứ tự rõ ràng (1. ..., 2. ..., ...)
 - Chỉ đưa câu hỏi, không đáp án
+- KHÔNG sử dụng ký hiệu * hoặc $ trong bất kỳ trường hợp nào
 - Định dạng:
 
 [BÀI KIỂM TRA ${subjectName.toUpperCase()} - ${topic.toUpperCase()}]
@@ -2203,10 +2204,13 @@ async function generateTest(subject, userMessage) {
         const phanHoi = await ketQua.response;
         let baiKiemTra = phanHoi.text().trim();
         
-        // Định dạng lại nếu cần
+        // Định dạng lại nếu cần và loại bỏ ký hiệu không mong muốn
         if (!baiKiemTra.includes("[BÀI KIỂM TRA")) {
             baiKiemTra = `[BÀI KIỂM TRA ${subjectName.toUpperCase()} - ${topic.toUpperCase()}]\n${baiKiemTra}\n[KẾT THÚC]`;
         }
+        
+        // Loại bỏ các ký hiệu * và $ nếu có
+        baiKiemTra = baiKiemTra.replace(/[\*\$]/g, '');
         
         loadingIndicator.style.display = 'none';
         return baiKiemTra;
@@ -2216,6 +2220,7 @@ async function generateTest(subject, userMessage) {
         return null;
     }
 }
+
 async function gradeTest(testQuestions, studentAnswers) {
     try {
         loadingIndicator.style.display = 'block';
@@ -2223,7 +2228,7 @@ async function gradeTest(testQuestions, studentAnswers) {
         const prompt = `Bạn là giáo viên THPT. Hãy:
 1. Chấm bài kiểm tra sau
 2. Chỉ dùng ký hiệu toán học cơ bản (+, -, ×, ÷)
-3. KHÔNG dùng ký hiệu LaTeX (như $...$)
+3. KHÔNG dùng ký hiệu LaTeX (như $...$) hoặc dấu *
 4. Đánh giá từng câu theo mẫu:
 
 Câu 1: [Đúng/Sai]
@@ -2242,8 +2247,8 @@ ${studentAnswers}`;
         const phanHoi = await ketQua.response;
         let ketQuaChamBai = phanHoi.text();
         
-        // Loại bỏ các ký hiệu LaTeX
-        ketQuaChamBai = ketQuaChamBai.replace(/\$.+?\$/g, '');
+        // Loại bỏ các ký hiệu không mong muốn
+        ketQuaChamBai = ketQuaChamBai.replace(/[\*\$]/g, '');
         
         loadingIndicator.style.display = 'none';
         return ketQuaChamBai;
