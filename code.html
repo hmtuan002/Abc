@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTPYE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
@@ -189,6 +189,7 @@
 
         #o-nhap-tin-nhan-container {
             position: relative;
+            padding-bottom: 30px;
             flex-grow: 1;
             min-height: 50px;
         }
@@ -832,6 +833,42 @@
     color: #F44336;
     font-weight: bold;
 }
+@media (max-width: 768px) {
+    /* Thêm thuộc tính overflow-y: auto và min-height cho subjectScreen */
+    #subjectScreen {
+        overflow-y: auto;
+        min-height: calc(100vh - 70px); /* 70px là chiều cao header */
+        padding: 15px;
+    }
+
+    /* Sửa lại grid cho các nút môn học */
+    .subject-buttons {
+        grid-template-columns: 1fr;
+        width: 100%;
+        gap: 15px;
+        padding-bottom: 20px; /* Thêm padding dưới để không bị che */
+    }
+
+    /* Giảm kích thước nút môn học */
+    .subject-button {
+        padding: 15px;
+        height: 120px;
+        font-size: 1rem;
+    }
+
+    /* Giảm kích thước icon */
+    .subject-button i {
+        font-size: 2rem;
+        margin-bottom: 10px;
+    }
+
+    /* Thêm padding cho main-container */
+    .main-container {
+        margin: 0;
+        border-radius: 0;
+        overflow: hidden;
+    }
+}
     </style>
 </head>
 <body>
@@ -840,7 +877,7 @@
         <div class="app-header">
             <div class="logo">
                 <i class="fas fa-graduation-cap"></i>
-                <h2>TriGuide: Gia sư AI hỗ trợ ôn tập các môn Tự nhiên</h2>
+                <h2>TriGuide: Gia sư AI hỗ trợ ôn tập các mô Tự nhiên</h2>
             </div>
         </div>
 
@@ -877,12 +914,9 @@
                     </div>
                 </div>
                 <div id="khu-vuc-nhap">
-                    <label for="file-upload" class="file-upload-button">
-                        <i class="fas fa-paperclip"></i>
-                    </label>
-                    <input type="file" id="file-upload" accept="image/*,.pdf,.doc,.docx,.txt">
+                   
                     <div id="o-nhap-tin-nhan-container">
-                        <textarea id="o-nhap-tin-nhan" placeholder="Nhập câu hỏi của bạn hoặc tải lên file đề bài..." rows="1"></textarea>
+                        <textarea id="o-nhap-tin-nhan" placeholder="Nhập câu hỏi của bạn..." rows="1"></textarea>
                         <button id="nut-gui">
                             <i class="fas fa-paper-plane"></i>
                         </button>
@@ -1479,57 +1513,6 @@ function updateWeaknessFromReminders(remindersText) {
     }
 }
 
-function handleFileUpload(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    uploadedFile = file;
-    
-    const fileName = file.name.length > 20 ? file.name.substring(0, 17) + '...' : file.name;
-    const fileType = file.type.split('/')[0];
-    
-    if (fileType === 'image') {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const messageTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            const messageContent = `Đã tải lên hình ảnh: ${fileName}<div class="message-time">${messageTime}</div>`;
-            
-            const divTinNhan = document.createElement('div');
-            divTinNhan.classList.add('tin-nhan', 'tin-nhan-nguoi-dung');
-            divTinNhan.innerHTML = messageContent;
-            
-            const imgElement = document.createElement('img');
-            imgElement.src = e.target.result;
-            imgElement.className = 'message-image';
-            divTinNhan.appendChild(imgElement);
-            
-            khungTroChuyen.appendChild(divTinNhan);
-            khungTroChuyen.scrollTop = khungTroChuyen.scrollHeight;
-            
-            addToChatHistory("nguoi-dung", `Đã tải lên hình ảnh: ${fileName}`, currentSubject);
-        };
-        reader.readAsDataURL(file);
-    } else {
-        const messageTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const messageContent = `Đã tải lên file: ${fileName}<div class="message-time">${messageTime}</div>`;
-        
-        const divTinNhan = document.createElement('div');
-        divTinNhan.classList.add('tin-nhan', 'tin-nhan-nguoi-dung');
-        divTinNhan.innerHTML = messageContent;
-        
-        const fileElement = document.createElement('div');
-        fileElement.className = 'file-attachment';
-        fileElement.innerHTML = `<i class="fas fa-file"></i> ${fileName}`;
-        divTinNhan.appendChild(fileElement);
-        
-        khungTroChuyen.appendChild(divTinNhan);
-        khungTroChuyen.scrollTop = khungTroChuyen.scrollHeight;
-        
-        addToChatHistory("nguoi-dung", `Đã tải lên file: ${fileName}`, currentSubject);
-    }
-    
-    event.target.value = '';
-}
 
 function adjustTextareaHeight() {
     oNhapTinNhan.style.height = 'auto';
