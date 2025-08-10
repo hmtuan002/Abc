@@ -303,6 +303,7 @@
             padding: 12px 15px;
             margin: 10px 0;
             border-radius: 0 8px 8px 0;
+            min-height: 400px;
         }
 
         .knowledge-box-title {
@@ -868,6 +869,20 @@
         overflow: hidden;
     }
 }
+/* Thêm vào phần style */
+.chart-container {
+    width: 100%;
+    height: 400px;  /* Tăng chiều cao */
+    margin: 20px 0;
+    position: relative;
+   
+}
+
+.chart-container canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
     </style>
 </head>
 <body>
@@ -1041,15 +1056,10 @@ function drawTestHistoryChart(container) {
         return;
     }
 
-    // Tạo canvas mới mỗi lần vẽ biểu đồ
+    // Tạo canvas mới
     const canvas = document.createElement('canvas');
-    canvas.id = 'testHistoryChart-' + Date.now(); // ID duy nhất
     canvas.style.width = '100%';
-    canvas.style.height = '250px';
-    canvas.style.maxHeight = '250px';
-    canvas.style.minHeight = '250px';
-    
-    // Thêm canvas vào container được chỉ định
+    canvas.style.height = '100%';
     container.appendChild(canvas);
 
     const ctx = canvas.getContext('2d');
@@ -1065,11 +1075,10 @@ function drawTestHistoryChart(container) {
     const scores = history.map(test => Math.min(Math.max(parseFloat(test.score) || 0, 0), 10));
     const dates = history.map(test => new Date(test.date).toLocaleDateString());
 
-    const gradient = ctx.createLinearGradient(0, 0, 0, 200);
+    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
     gradient.addColorStop(0, 'rgba(58, 123, 213, 0.8)');
     gradient.addColorStop(1, 'rgba(0, 210, 255, 0.2)');
 
-    // Lưu instance biểu đồ vào canvas để có thể hủy sau này
     canvas.chartInstance = new Chart(ctx, {
         type: 'line',
         data: {
@@ -1079,43 +1088,28 @@ function drawTestHistoryChart(container) {
                 data: scores,
                 backgroundColor: gradient,
                 borderColor: 'rgba(58, 123, 213, 1)',
-                borderWidth: 2,
+                borderWidth: 3,
                 tension: 0.3,
                 fill: true,
                 pointBackgroundColor: 'white',
                 pointBorderColor: 'rgba(58, 123, 213, 1)',
-                pointRadius: 4,
-                pointHoverRadius: 6
+                pointRadius: 5,
+                pointHoverRadius: 7
             }]
         },
         options: {
             responsive: true,
-            maintainAspectRatio: true,
-            aspectRatio: 2,
-            scales: {
-                y: {
-                    min: 0,
-                    max: 10,
-                    ticks: {
-                        stepSize: 1,
-                        callback: function(value) {
-                            return Number.isInteger(value) ? value : null;
-                        },
-                        maxTicksLimit: 11
-                    },
-                    title: {
-                        display: true,
-                        text: 'Điểm số'
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                    labels: {
+                        font: {
+                            size: 14
+                        }
                     }
                 },
-                x: {
-                    title: {
-                        display: true,
-                        text: 'Lần kiểm tra'
-                    }
-                }
-            },
-            plugins: {
                 tooltip: {
                     callbacks: {
                         label: function(context) {
@@ -1124,25 +1118,67 @@ function drawTestHistoryChart(container) {
                         afterLabel: function(context) {
                             return `Ngày: ${dates[context.dataIndex]}`;
                         }
+                    },
+                    bodyFont: {
+                        size: 14
+                    },
+                    titleFont: {
+                        size: 16
                     }
-                },
-                legend: {
-                    display: false
                 },
                 title: {
                     display: true,
                     text: 'BIỂU ĐỒ TIẾN BỘ',
                     font: {
-                        size: 16
+                        size: 18
+                    },
+                    padding: {
+                        top: 10,
+                        bottom: 20
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    min: 0,
+                    max: 10,
+                    ticks: {
+                        stepSize: 1,
+                        font: {
+                            size: 14
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: 'Điểm số',
+                        font: {
+                            size: 16
+                        }
+                    }
+                },
+                x: {
+                    ticks: {
+                        font: {
+                            size: 14
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: 'Lần kiểm tra',
+                        font: {
+                            size: 16
+                        }
                     }
                 }
             }
         }
     });
 }
-
-function generateChartComment() {
-    if (!currentSubject || !testHistory[currentSubject] || testHistory[currentSubject].length < 2) return;
+function generateChartComment(chartContainerId) {
+    if (!currentSubject || !testHistory[currentSubject] || testHistory[currentSubject].length < 2) {
+        console.warn("Không đủ dữ liệu để tạo nhận xét hoặc không có môn học được chọn.");
+        return;
+    }
     
     const history = testHistory[currentSubject];
     const lastScore = history[history.length - 1].score;
@@ -1163,14 +1199,26 @@ function generateChartComment() {
         comment = `Lần này bạn làm kém hơn ${(prevScore - lastScore).toFixed(1)} điểm so với lần trước. `;
     }
     
-    comment += `Điểm trung bình của bạn là ${averageScore.toFixed(1)}/10.`;
+    comment += ` Điểm trung bình của bạn là ${averageScore.toFixed(1)}/10.`;
     
-    const commentElement = document.getElementById('testChartComment');
-    if (commentElement) {
-        commentElement.textContent = comment;
+    // Tạo HTML cho nhận xét
+    const commentHTML = `<div id="testChartComment" style="margin-top: 10px; padding: 10px; background-color: #f5f5f5; border-radius: 5px;">${comment}</div>`;
+    
+    // Tìm container biểu đồ bằng ID được truyền vào
+    const container = document.getElementById(chartContainerId);
+    if (container) {
+        // Xóa nhận xét cũ nếu có
+        const oldComment = container.querySelector('#testChartComment');
+        if (oldComment) {
+            oldComment.remove();
+        }
+        // Thêm nhận xét mới
+        container.insertAdjacentHTML('beforeend', commentHTML);
+        console.log("Nhận xét đã được thêm vào container:", chartContainerId);
+    } else {
+        console.error("Không tìm thấy container với ID:", chartContainerId);
     }
 }
-
 function showTestDetails(subject, index) {
     const test = testHistory[subject][index];
     if (!test) return;
@@ -1201,6 +1249,7 @@ function showTestDetails(subject, index) {
     
     themTinNhanVaoGiaoDien("bot", detailsHTML);
     addToChatHistory("bot", detailsHTML, subject);
+
 }
 function showTestHistory() {
     if (!currentSubject) return;
@@ -1256,25 +1305,24 @@ function showTestHistory() {
     
     historyHTML += `</tbody></table></div>`;
     
-    // Tạo container mới cho biểu đồ và comment
-    const chartContainerId = 'chart-container-' + Date.now();
-    historyHTML += `<div id="${chartContainerId}" style="margin-top: 20px;">
-        <div id="testChartComment" style="margin-top: 10px; padding: 10px; background-color: #f5f5f5; border-radius: 5px;"></div>
-    </div>`;
+    // Tạo container mới cho biểu đồ với ID cố định
+    const chartContainerId = 'chart-container-' + new Date().getTime();
+    historyHTML += `<div id="${chartContainerId}" class="chart-container"></div>`;
     
     themTinNhanVaoGiaoDien("bot", historyHTML);
     addToChatHistory("bot", historyHTML, currentSubject);
     
-    // Vẽ biểu đồ sau khi message đã được thêm vào DOM
+    // Vẽ biểu đồ và thêm nhận xét sau khi đảm bảo container đã được thêm vào DOM
     setTimeout(() => {
         const container = document.getElementById(chartContainerId);
         if (container) {
             drawTestHistoryChart(container);
-            generateChartComment();
+            generateChartComment(chartContainerId); // Truyền ID vào hàm generateChartComment
+        } else {
+            console.error("Không tìm thấy container với ID:", chartContainerId);
         }
-    }, 100);
+    }, 200); // Tăng thời gian chờ lên 200ms để đảm bảo DOM sẵn sàng
 }
-
 function loadTestHistory() {
     const savedHistory = localStorage.getItem('testHistory');
     if (savedHistory) {
