@@ -1,4 +1,4 @@
-<!DOCTPYE html>
+<!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
@@ -189,7 +189,7 @@
 
         #o-nhap-tin-nhan-container {
             position: relative;
-            padding-bottom: 30px;
+            padding-bottom: 35px;
             flex-grow: 1;
             min-height: 50px;
         }
@@ -834,35 +834,34 @@
     font-weight: bold;
 }
 @media (max-width: 768px) {
-    /* Thêm thuộc tính overflow-y: auto và min-height cho subjectScreen */
+
     #subjectScreen {
         overflow-y: auto;
-        min-height: calc(100vh - 70px); /* 70px là chiều cao header */
+        min-height: calc(100vh - 70px);
         padding: 15px;
     }
 
-    /* Sửa lại grid cho các nút môn học */
     .subject-buttons {
         grid-template-columns: 1fr;
         width: 100%;
         gap: 15px;
-        padding-bottom: 20px; /* Thêm padding dưới để không bị che */
+        padding-bottom: 20px; 
     }
 
-    /* Giảm kích thước nút môn học */
+
     .subject-button {
         padding: 15px;
         height: 120px;
         font-size: 1rem;
     }
 
-    /* Giảm kích thước icon */
+
     .subject-button i {
         font-size: 2rem;
         margin-bottom: 10px;
     }
 
-    /* Thêm padding cho main-container */
+
     .main-container {
         margin: 0;
         border-radius: 0;
@@ -877,7 +876,7 @@
         <div class="app-header">
             <div class="logo">
                 <i class="fas fa-graduation-cap"></i>
-                <h2>TriGuide: Gia sư AI hỗ trợ ôn tập các mô Tự nhiên</h2>
+                <h2>TriGuide: Gia sư AI hỗ trợ ôn tập các môn học Tự nhiên</h2>
             </div>
         </div>
 
@@ -914,9 +913,12 @@
                     </div>
                 </div>
                 <div id="khu-vuc-nhap">
-                   
+                    <label for="file-upload" class="file-upload-button">
+                        <i class="fas fa-paperclip"></i>
+                    </label>
+                    <input type="file" id="file-upload" accept="image/*,.pdf,.doc,.docx,.txt">
                     <div id="o-nhap-tin-nhan-container">
-                        <textarea id="o-nhap-tin-nhan" placeholder="Nhập câu hỏi của bạn..." rows="1"></textarea>
+                        <textarea id="o-nhap-tin-nhan" placeholder="Nhập câu hỏi của bạn hoặc tải lên file đề bài..." rows="1"></textarea>
                         <button id="nut-gui">
                             <i class="fas fa-paper-plane"></i>
                         </button>
@@ -1033,33 +1035,28 @@ let isWaitingForTestAnswers = false;
     
  
     const solutionRequestPhrases = /(giải bài|giải giúp|đáp án|kết quả|hướng dẫn giải|bài giải|làm bài|giải thích|cách làm)/;
-function drawTestHistoryChart() {
+function drawTestHistoryChart(container) {
     if (!currentSubject || !testHistory[currentSubject] || testHistory[currentSubject].length === 0) {
         console.log("No data to display chart for subject:", currentSubject);
         return;
     }
 
-    let canvas = document.getElementById('testHistoryChart');
-    if (!canvas) {
-        const chartContainer = document.querySelector('#khung-tro-chuyen .knowledge-box');
-        if (chartContainer) {
-            canvas = document.createElement('canvas');
-            canvas.id = 'testHistoryChart';
-            canvas.style.width = '100%';
-            canvas.style.height = '250px';
-            canvas.style.maxHeight = '250px';
-            canvas.style.minHeight = '250px';
-            chartContainer.appendChild(canvas);
-        } else {
-            console.log("No chart container found");
-            return;
-        }
-    }
+    // Tạo canvas mới mỗi lần vẽ biểu đồ
+    const canvas = document.createElement('canvas');
+    canvas.id = 'testHistoryChart-' + Date.now(); // ID duy nhất
+    canvas.style.width = '100%';
+    canvas.style.height = '250px';
+    canvas.style.maxHeight = '250px';
+    canvas.style.minHeight = '250px';
+    
+    // Thêm canvas vào container được chỉ định
+    container.appendChild(canvas);
 
     const ctx = canvas.getContext('2d');
 
-    if (window.testHistoryChartInstance) {
-        window.testHistoryChartInstance.destroy();
+    // Hủy biểu đồ cũ nếu có
+    if (canvas.chartInstance) {
+        canvas.chartInstance.destroy();
     }
 
     const history = testHistory[currentSubject];
@@ -1072,7 +1069,8 @@ function drawTestHistoryChart() {
     gradient.addColorStop(0, 'rgba(58, 123, 213, 0.8)');
     gradient.addColorStop(1, 'rgba(0, 210, 255, 0.2)');
 
-    window.testHistoryChartInstance = new Chart(ctx, {
+    // Lưu instance biểu đồ vào canvas để có thể hủy sau này
+    canvas.chartInstance = new Chart(ctx, {
         type: 'line',
         data: {
             labels: labels,
@@ -1204,7 +1202,6 @@ function showTestDetails(subject, index) {
     themTinNhanVaoGiaoDien("bot", detailsHTML);
     addToChatHistory("bot", detailsHTML, subject);
 }
-
 function showTestHistory() {
     if (!currentSubject) return;
     
@@ -1230,13 +1227,13 @@ function showTestHistory() {
                 </thead>
                 <tbody>`;
     
-    history.slice().reverse().forEach((test, index) => {
+    history.forEach((test, index) => {
         const date = new Date(test.date).toLocaleDateString();
         const scoreClass = test.score >= 8 ? "correct-answer" : test.score >= 5 ? "" : "wrong-answer";
         
         let improvementBadge = '';
         if (index > 0) {
-            const prevScore = history[history.length - index].score;
+            const prevScore = history[index - 1].score;
             const improvement = ((test.score - prevScore) / prevScore * 100).toFixed(1);
             
             if (improvement > 0) {
@@ -1249,7 +1246,7 @@ function showTestHistory() {
         }
         
         historyHTML += `
-            <tr onclick="showTestDetails('${currentSubject}', ${history.length - 1 - index})">
+            <tr onclick="showTestDetails('${currentSubject}', ${index})">
                 <td>${date}</td>
                 <td>${test.topic}</td>
                 <td style="text-align: center;" class="${scoreClass}">${test.score}/10</td>
@@ -1259,18 +1256,23 @@ function showTestHistory() {
     
     historyHTML += `</tbody></table></div>`;
     
-    historyHTML += `<div style="margin-top: 20px;">
-        <canvas id="testHistoryChart" style="width: 100%; height: 250px;"></canvas>
+    // Tạo container mới cho biểu đồ và comment
+    const chartContainerId = 'chart-container-' + Date.now();
+    historyHTML += `<div id="${chartContainerId}" style="margin-top: 20px;">
         <div id="testChartComment" style="margin-top: 10px; padding: 10px; background-color: #f5f5f5; border-radius: 5px;"></div>
     </div>`;
     
     themTinNhanVaoGiaoDien("bot", historyHTML);
     addToChatHistory("bot", historyHTML, currentSubject);
     
+    // Vẽ biểu đồ sau khi message đã được thêm vào DOM
     setTimeout(() => {
-        drawTestHistoryChart();
-        generateChartComment();
-    }, 500);
+        const container = document.getElementById(chartContainerId);
+        if (container) {
+            drawTestHistoryChart(container);
+            generateChartComment();
+        }
+    }, 100);
 }
 
 function loadTestHistory() {
@@ -1513,6 +1515,57 @@ function updateWeaknessFromReminders(remindersText) {
     }
 }
 
+function handleFileUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    uploadedFile = file;
+    
+    const fileName = file.name.length > 20 ? file.name.substring(0, 17) + '...' : file.name;
+    const fileType = file.type.split('/')[0];
+    
+    if (fileType === 'image') {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const messageTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const messageContent = `Đã tải lên hình ảnh: ${fileName}<div class="message-time">${messageTime}</div>`;
+            
+            const divTinNhan = document.createElement('div');
+            divTinNhan.classList.add('tin-nhan', 'tin-nhan-nguoi-dung');
+            divTinNhan.innerHTML = messageContent;
+            
+            const imgElement = document.createElement('img');
+            imgElement.src = e.target.result;
+            imgElement.className = 'message-image';
+            divTinNhan.appendChild(imgElement);
+            
+            khungTroChuyen.appendChild(divTinNhan);
+            khungTroChuyen.scrollTop = khungTroChuyen.scrollHeight;
+            
+            addToChatHistory("nguoi-dung", `Đã tải lên hình ảnh: ${fileName}`, currentSubject);
+        };
+        reader.readAsDataURL(file);
+    } else {
+        const messageTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const messageContent = `Đã tải lên file: ${fileName}<div class="message-time">${messageTime}</div>`;
+        
+        const divTinNhan = document.createElement('div');
+        divTinNhan.classList.add('tin-nhan', 'tin-nhan-nguoi-dung');
+        divTinNhan.innerHTML = messageContent;
+        
+        const fileElement = document.createElement('div');
+        fileElement.className = 'file-attachment';
+        fileElement.innerHTML = `<i class="fas fa-file"></i> ${fileName}`;
+        divTinNhan.appendChild(fileElement);
+        
+        khungTroChuyen.appendChild(divTinNhan);
+        khungTroChuyen.scrollTop = khungTroChuyen.scrollHeight;
+        
+        addToChatHistory("nguoi-dung", `Đã tải lên file: ${fileName}`, currentSubject);
+    }
+    
+    event.target.value = '';
+}
 
 function adjustTextareaHeight() {
     oNhapTinNhan.style.height = 'auto';
